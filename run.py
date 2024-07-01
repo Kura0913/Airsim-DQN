@@ -92,6 +92,7 @@ if __name__ == "__main__":
     if len(vehicle_names) > 0:
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
+        client.confirmConnection()        
         sensor_num = len(get_distance_sensor_data(client, drone_name))
         env = AirsimDroneEnv(calculate_reward, sensor_num)
         agent = DQNAgent(state_dim=sensor_num, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma)
@@ -109,17 +110,17 @@ if __name__ == "__main__":
             
             for episode in range(episodes):
                 client.reset()
+                client.enableApiControl(True)
                 state, _ = env.reset()
                 done = False
                 rewards = 0
                 step_count = 0
-                time.sleep(1)
                 while not done:
                     action = agent.act(state)
                     n, e, d = action
                     n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
                     if step_count <= 0:
-                        client.takeoffAsync(1, drone_name).join()
+                        client.takeoffAsync(10, drone_name).join()
 
                     client.moveByVelocityAsync(float(n), float(e), float(d) , 0.1).join()
                     
