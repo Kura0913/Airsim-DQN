@@ -9,13 +9,14 @@ import os
 import json
 import sys
 import argparse
+import time
 
 DISTANCE_SENSOR = {
     "f" : "front",
     "l" : "left",
     "r" : "right",
-    "fr" : "fright",
-    "fl" : "fleft",
+    "rf" : "rfront",
+    "lf" : "lfront",
     "t" : "top",
     "b" : "bottom",
     'lfb': 'lfbottom',
@@ -29,24 +30,24 @@ OBJECT_NAME = "BP_Grid"
 ROUND_DECIMALS = 2
 BASE_PTAH = '.\\execute\\runs\\'
 def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
-    return [client.getDistanceSensorData(DISTANCE_SENSOR["f"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["l"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["r"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["fl"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["fr"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["t"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["b"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["lfb"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["rfb"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["lbb"], drone_name),
-                    client.getDistanceSensorData(DISTANCE_SENSOR["rbb"], drone_name)]
+    return [client.getDistanceSensorData(DISTANCE_SENSOR["f"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["l"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["r"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["lf"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["rf"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["t"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["b"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["lfb"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["rfb"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["lbb"], drone_name).distance,
+                    client.getDistanceSensorData(DISTANCE_SENSOR["rbb"], drone_name).distance]
 
 def calculate_reward(state, action, next_state, done, overlap, prev_dis, drone_position, curr_target):
     if done:
         if overlap:
-            return -100, {}
+            return -100, {'prev_dis' : -1}
         else:
-            return 100, {}
+            return 100, {'prev_dis' : -1}
     else:
         curr_distance = airsimtools.calculate_distance(drone_position, curr_target)
         if prev_dis < 0 or curr_distance < prev_dis:
@@ -73,10 +74,10 @@ def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate distance between two coordinates.")
-    parser.add_argument('--batch_size', nargs=1, type=int, default=64, help='batch_size')
-    parser.add_argument('--episodes', nargs=1, type=int, default=5, help='number of training')
-    parser.add_argument('--gamma', nargs=1, type=float, default=0.99, help='weight of previous reward')
-    parser.add_argument('--weight', nargs=1, type=str, default='', help='weight path')
+    parser.add_argument('--batch_size', type=int, default=16, help='batch_size')
+    parser.add_argument('--episodes', type=int, default=1000, help='number of training')
+    parser.add_argument('--gamma', type=float, default=0.99, help='weight of previous reward')
+    parser.add_argument('--weight', type=str, default='', help='weight path')
     args = parser.parse_args()
     
     user_home = os.path.expanduser('~')
@@ -89,11 +90,11 @@ if __name__ == "__main__":
         vehicle_names.append(vehicle)
 
     if len(vehicle_names) > 0:
-        drone_name = vehicle_names[0]        
+        drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
-        client.enableApiControl(True, drone_name)
-        env = AirsimDroneEnv(calculate_reward)
-        agent = DQNAgent(state_dim=6, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma)
+        sensor_num = len(get_distance_sensor_data(client, drone_name))
+        env = AirsimDroneEnv(calculate_reward, sensor_num)
+        agent = DQNAgent(state_dim=sensor_num, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{OBJECT_NAME}[\w]*')
@@ -112,11 +113,15 @@ if __name__ == "__main__":
                 done = False
                 rewards = 0
                 step_count = 0
+                time.sleep(1)
                 while not done:
                     action = agent.act(state)
                     n, e, d = action
                     n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
-                    client.moveByVelocityAsync(n, e, d , 0.1).join()
+                    if step_count <= 0:
+                        client.takeoffAsync(1, drone_name).join()
+
+                    client.moveByVelocityAsync(float(n), float(e), float(d) , 0.1).join()
                     
                     sensor_values = get_distance_sensor_data(client, drone_name)
                     drone_pos = client.simGetVehiclePose().position
@@ -134,7 +139,7 @@ if __name__ == "__main__":
                         else:
                             status = (f'Episode: {episode:3d}/{episodes} | Step: {step_count} | Reward: {rewards:3d} | mission_state: success')
                     else:
-                        status = (f'Episode: {episode:3d}/{episodes} | Step: {step_count} | Reward: {rewards:3d} | mission_state: executing')
+                        status = (f'Episode: {episode:3d}/{episodes} | Step: {step_count} | Reward: {rewards:3d} | mission_state: run')
                     sys.stdout.write('\r' + status)
                     sys.stdout.flush()
 

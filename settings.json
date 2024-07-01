@@ -1,0 +1,163 @@
+{
+  "$schema": "./schema.json",
+  "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/main/docs/settings.md",
+  "SettingsVersion": 1.2,
+  "SimMode": "Multirotor",
+  "LogMessagesVisible": false,
+  "CameraDefaults": {
+    "CaptureSettings": [
+      {
+        "ImageType": 0,
+        "Width": 1920,
+        "Height": 1080,
+        "FOV_Degrees": 90,
+        "AutoExposureSpeed": 100,
+        "AutoExposureBias": 0,
+        "AutoExposureMaxBrightness": 0.64,
+        "AutoExposureMinBrightness": 0.03,
+        "MotionBlurAmount": 0,
+        "TargetGamma": 1.0,
+        "ProjectionMode": "",
+        "OrthoWidth": 5.12
+      },
+      {
+        "ImageType": 1,
+        "Width": 1920,
+        "Height": 1080
+      },
+      {
+        "ImageType": 3,
+        "Width": 1920,
+        "Height": 1080
+      },
+      {
+        "ImageType": 5,
+        "Width": 1920,
+        "Height": 1080
+      }
+    ]
+  },
+  "Vehicles": {
+    "drone_1": {
+      "VehicleType": "SimpleFlight",
+      "AutoCreate": true,
+      "AllowAPIAlways": true,
+      "EnableTrace": false,
+      "ClockType": "ScalableClock",
+      "Cameras": {
+        "front_camera": {
+          "CaptureSettings": [
+            {
+              "ImageType": 0,
+              "Width": 960,
+              "Height": 540,
+              "FOV_Degrees": 90
+            }],
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": -0.5,
+            "Pitch": 0.0,
+            "Roll": 0.0,
+            "Yaw": 0.0
+        }
+      },
+      "Sensors":{
+        "front": {
+        "SensorType": 5,
+        "Enabled" : true,
+        "X": 0.5, "Y": 0, "Z": 0,
+        "Yaw": 0, "Pitch": 0, "Roll": 0,
+        "MaxDistance":20,
+        "MinDistance": 0
+        },
+        "rfront": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": 0.7, "Y": 0.7, "Z": 0,
+          "Yaw": 45, "Pitch": 0, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "lfront": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": 0.7, "Y": -0.7, "Z": 0,
+          "Yaw": -45, "Pitch": 0, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "left": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": 0, "Y": -0.5, "Z": 0,
+          "Yaw": -90, "Pitch": 0, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "right": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": 0, "Y": 0.5, "Z": 0,
+          "Yaw": 90, "Pitch": 0, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "top": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": 0, "Y": 0, "Z": 0,
+          "Yaw": 0, "Pitch": 90, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "bottom": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": 0, "Y": 0, "Z": 0,
+          "Yaw": 0, "Pitch": -90, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "rfbottom": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": 0.7, "Y": 0.7, "Z": 0,
+          "Yaw": 0, "Pitch": -90, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "lfbottom": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": 0.7, "Y": -0.7, "Z": 0,
+          "Yaw": 0, "Pitch": -90, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "rbbottom": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": -0.7, "Y": 0.7, "Z": 0,
+          "Yaw": 0, "Pitch": -90, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        },
+        "lbbottom": {
+          "SensorType": 5,
+          "Enabled" : true,
+          "X": -0.7, "Y": -0.7, "Z": 0,
+          "Yaw": 0, "Pitch": -90, "Roll": 0,
+          "MaxDistance":20,
+          "MinDistance": 0
+        }
+      }
+    }
+  },
+  "PawnPaths": {
+    "BareboneCar": {"PawnBP": "Class'/AirSim/VehicleAdv/Vehicle/VehicleAdvPawn.VehicleAdvPawn_C'"},
+    "DefaultCar": {"PawnBP": "Class'/AirSim/VehicleAdv/SUV/SuvCarPawn.SuvCarPawn_C'"},
+    "DefaultQuadrotor": {"PawnBP": "Class'/AirSim/Blueprints/BP_FlyingPawn.BP_FlyingPawn_C'"},
+    "DefaultComputerVision": {"PawnBP": "Class'/AirSim/Blueprints/BP_ComputerVisionPawn.BP_ComputerVisionPawn_C'"}
+
+  }
+}
