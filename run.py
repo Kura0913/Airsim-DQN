@@ -43,13 +43,13 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
                     client.getDistanceSensorData(DISTANCE_SENSOR["rbb"], drone_name).distance]
 
 def calculate_reward(state, action, next_state, done, overlap, prev_dis, drone_position, curr_target):
+    curr_distance = airsimtools.calculate_distance(drone_position, curr_target)
     if done:
         if overlap:
-            return -100, {'prev_dis' : -1}
+            return -1000, {'prev_dis' : -1}
         else:
-            return 100, {'prev_dis' : -1}
+            return 1000, {'prev_dis' : -1}
     else:
-        curr_distance = airsimtools.calculate_distance(drone_position, curr_target)
         if prev_dis < 0 or curr_distance < prev_dis:
             return 1, {'prev_dis' : curr_distance}
         else:
@@ -74,7 +74,7 @@ def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate distance between two coordinates.")
-    parser.add_argument('--batch_size', type=int, default=16, help='batch_size')
+    parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--episodes', type=int, default=1000, help='number of training')
     parser.add_argument('--gamma', type=float, default=0.99, help='weight of previous reward')
     parser.add_argument('--weight', type=str, default='', help='weight path')
@@ -127,7 +127,7 @@ if __name__ == "__main__":
                     sensor_values = get_distance_sensor_data(client, drone_name)
                     drone_pos = client.simGetVehiclePose().position
                     drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, ROUND_DECIMALS), np.round(drone_pos.y_val, ROUND_DECIMALS), np.round(drone_pos.z_val, ROUND_DECIMALS))
-                    next_state, reward, done, _, info = env.step(action, sensor_values, targets = targets, drone_position=drone_pos)                
+                    next_state, reward, done, _, info = env.step(action, sensor_values, targets = targets, drone_position=drone_pos, step_cnt = step_count)                
                     agent.store_experience(state, action, reward, next_state, done)
                     state = next_state
                     

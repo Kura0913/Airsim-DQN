@@ -24,6 +24,7 @@ class DQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
     def act(self, state):
+        self.policy_net.eval()
         with torch.no_grad():
             state = torch.tensor(state, dtype=torch.float32)
             action = self.policy_net(state).numpy()
@@ -53,6 +54,7 @@ class DQNAgent:
         next_state = torch.tensor(next_state, dtype=torch.float32)
         done = torch.tensor(batch.done, dtype=torch.float32)
         
+        self.policy_net.train()
         # Get Q-values predictions from the policy network
         q_values = self.policy_net(state)
 
