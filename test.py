@@ -2,14 +2,12 @@ from DQN.DQNAgent import DQNAgent
 from DQN.Env import AirsimDroneEnv
 from ShortestPath import TravelerShortestPath as tsp
 import Tools.AirsimTools as airsimtools
-import Tools.DQNTools as dqntools
 import numpy as np
 import airsim
 import os
 import json
 import sys
 import argparse
-import torch
 import threading
 import keyboard
 import time
@@ -30,7 +28,7 @@ DISTANCE_SENSOR = {
 }
 
 ROUND_DECIMALS = 2
-BASE_PTAH = '.\\runs\\'
+BASE_PTAH = '.\\execute\\runs\\'
 
 exit_flag = False
 
@@ -88,17 +86,13 @@ def listen_for_stop():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate distance between two coordinates.")
-    parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--episodes', type=int, default=5, help='number of training')
-    parser.add_argument('--gamma', type=float, default=0.99, help='weight of previous reward')
     parser.add_argument('--weight', type=str, default='', help='weight path')
-    parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda'], help='Device to use for training (cpu or cuda)')
     parser.add_argument('--object', type=str, default='BP_Grid', help='The object name in the vr environment, you can place objects in the VR environment and make sure that the objects you want to visit start with the same name.. Initial object is: BP_Grid')
     args = parser.parse_args()
     # to stop training and save the weight    
     stop_event = threading.Event()
 
-    device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
     user_home = os.path.expanduser('~')
     settings_path = os.path.join(user_home, 'Documents', 'AirSim', 'settings.json')
     with open(settings_path, 'r') as file:
@@ -108,13 +102,13 @@ if __name__ == "__main__":
     for vehicle, _ in vehicles.items():
         vehicle_names.append(vehicle)
 
-    if len(vehicle_names) > 0:
+    if len(vehicle_names) > 0 or args.weight == '':
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
         client.confirmConnection()        
         sensor_num = len(get_distance_sensor_data(client, drone_name))
         env = AirsimDroneEnv(calculate_reward, sensor_num)
-        agent = DQNAgent(state_dim=sensor_num, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
+        agent = DQNAgent(state_dim=sensor_num, action_dim=3)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
@@ -145,19 +139,15 @@ if __name__ == "__main__":
                     n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
                     if step_count <= 0:
                         client.takeoffAsync(10, drone_name).join()
-                    
-                    drone_pos = client.simGetVehiclePose(drone_name).position
-                    velocity = airsimtools.scale_and_normalize_vector(airsimtools.get_velocity(drone_pos, targets[0], 2), 1)
-                    drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, ROUND_DECIMALS), np.round(drone_pos.y_val, ROUND_DECIMALS), np.round(drone_pos.z_val, ROUND_DECIMALS))
 
-                    client.moveByVelocityAsync(velocity[0] + float(n),velocity[1] +  float(e),velocity[2] +  float(d) , 0.1).join()
+                    client.moveByVelocityAsync(float(n), float(e), float(d) , 0.1).join()
                     
                     sensor_values = get_distance_sensor_data(client, drone_name)
+                    drone_pos = client.simGetVehiclePose().position
+                    drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, ROUND_DECIMALS), np.round(drone_pos.y_val, ROUND_DECIMALS), np.round(drone_pos.z_val, ROUND_DECIMALS))
                     next_state, reward, done, _, info = env.step(action, sensor_values, targets = targets, drone_position=drone_pos, step_cnt = step_count)                
-                    agent.store_experience(state, action, reward, next_state, done)
-                    state = next_state
                     
-                    agent.train()
+                    state = next_state
                     rewards += reward # calculate total rewards
                     step_count += 1
                     if done:
@@ -172,9 +162,8 @@ if __name__ == "__main__":
 
                 print(f'\r')
 
-            agent.save(f"{dqntools.create_directory(BASE_PTAH)}\\model.pth") # save weight
-            print("Updated model saved!")
+            print("test finished!")
             exit_flag = True
             stop_thread.join()
         else:
-            print("The corresponding object cannot be found in the environment and training cannot be started.")
+            print("The corresponding object cannot be found in the environment and testing cannot be started.")

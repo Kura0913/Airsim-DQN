@@ -9,10 +9,11 @@ from collections import namedtuple
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
 class DQNAgent:
-    def __init__(self, state_dim, action_dim, buffer_capacity = 10000, bacth_size = 64, gamma = 0.99, lr = 1e-3):
+    def __init__(self, state_dim, action_dim, buffer_capacity = 10000, bacth_size = 64, gamma = 0.99, lr = 1e-3, device = 'cpu'):
         print(f'state_dim:{state_dim}')
-        self.policy_net = DQNNet(state_dim, action_dim)
-        self.target_net = DQNNet(state_dim, action_dim)
+        self.device = device
+        self.policy_net = DQNNet(state_dim, action_dim).to(self.device)
+        self.target_net = DQNNet(state_dim, action_dim).to(self.device)
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr = lr)
         self.criterion = nn.MSELoss()
         self.memory = ReplayBuffer(buffer_capacity)
@@ -26,8 +27,8 @@ class DQNAgent:
     def act(self, state):
         self.policy_net.eval()
         with torch.no_grad():
-            state = torch.tensor(state, dtype=torch.float32)
-            action = self.policy_net(state).numpy()
+            state = torch.tensor(state, dtype=torch.float32).to(self.device)
+            action = self.policy_net(state).cpu().numpy()
 
         return action
     
@@ -48,11 +49,11 @@ class DQNAgent:
         action = np.array(batch.action)
         next_state = np.array(batch.next_state)
 
-        state = torch.tensor(state, dtype=torch.float32)
-        action = torch.tensor(action, dtype=torch.int64)
-        reward = torch.tensor(batch.reward, dtype=torch.float32)
-        next_state = torch.tensor(next_state, dtype=torch.float32)
-        done = torch.tensor(batch.done, dtype=torch.float32)
+        state = torch.tensor(state, dtype=torch.float32).to(self.device)
+        action = torch.tensor(action, dtype=torch.int64).to(self.device)
+        reward = torch.tensor(batch.reward, dtype=torch.float32).to(self.device)
+        next_state = torch.tensor(next_state, dtype=torch.float32).to(self.device)
+        done = torch.tensor(batch.done, dtype=torch.float32).to(self.device)
         
         self.policy_net.train()
         # Get Q-values predictions from the policy network
