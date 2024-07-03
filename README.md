@@ -227,18 +227,21 @@ If there is no object corresponding to the object name in the VR environment, tr
 
 After the training is completed, a folder named today's date will be generated in 'Airsim-DQN\execute\runs\', which contains the weight of the training.
 
+If you want to terminate the training, press the **p** key in cmd. After completing the current eposide, the training will be terminated and the weight will be stored.
+
 ```cmd
 python run.py
 ```
 
-| **parameters** | **initial** | **directions**                                                                 |
-|:--------------:|:-----------:|:-------------------------------------------------------------------------------|
-| --episodes     | 5           | training cycle                                                                 |
-| --batch_size   | 64          | number of training samples                                                     |
-| --gamma        | 0.99        | estimated reward weight                                                        |
-| --object       | BP_Grid     | search object name                                                             |
-| --device       | cpu         | cuda or cpu                                                                    |
-| --weight       |             | the default value is empty. You can enter the weight path to continue training |
+| **parameters**  | **initial** | **directions**                                                                  |
+|:---------------:|:-----------:|:--------------------------------------------------------------------------------|
+| --episodes      | 5           | training cycle                                                                  |
+| --batch_size    | 64          | number of training samples                                                      |
+| --gamma         | 0.99        | estimated reward weight                                                         |
+| --object        | BP_Grid     | eearch object name                                                              |
+| --device        | cpu         | cuda or cpu                                                                     |
+| --weight        |             | the default value is empty. You can enter the weight path to continue training  |
+| --infinite_loop | False       | choose whether to enable infinite training mode                                 |
 
 ### test
 

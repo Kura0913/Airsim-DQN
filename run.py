@@ -91,6 +91,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--episodes', type=int, default=5, help='number of training')
     parser.add_argument('--gamma', type=float, default=0.99, help='weight of previous reward')
+    parser.add_argument('--infinite_loop', type=bool, default=False, help='keep training until press the stop button')
     parser.add_argument('--weight', type=str, default='', help='weight path')
     parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda'], help='Device to use for training (cpu or cuda)')
     parser.add_argument('--object', type=str, default='BP_Grid', help='The object name in the vr environment, you can place objects in the VR environment and make sure that the objects you want to visit start with the same name.. Initial object is: BP_Grid')
@@ -111,10 +112,10 @@ if __name__ == "__main__":
     if len(vehicle_names) > 0:
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
-        client.confirmConnection()        
+        client.confirmConnection()
         sensor_num = len(get_distance_sensor_data(client, drone_name))
         env = AirsimDroneEnv(calculate_reward, sensor_num)
-        agent = DQNAgent(state_dim=sensor_num, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
+        agent = DQNAgent(state_dim=sensor_num, action_dim=4, bacth_size=args.batch_size, gamma=args.gamma, device=device)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
@@ -130,6 +131,7 @@ if __name__ == "__main__":
                 except:
                     print(f"The path:{args.weight} is not exist, load weight fail.")
             
+            infinit_loop_cnt = 0
             for episode in range(episodes):
                 if stop_event.is_set(): # if stop event is set, stop training and save the weight
                     break
@@ -139,15 +141,17 @@ if __name__ == "__main__":
                 done = False
                 rewards = 0
                 step_count = 0
+                infinit_loop_cnt += 1
                 while not done:
                     action = agent.act(state)
-                    n, e, d = action
+                    n, e, d, alpha = action
                     n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
                     if step_count <= 0:
                         client.takeoffAsync(10, drone_name).join()
                     
                     drone_pos = client.simGetVehiclePose(drone_name).position
                     velocity = airsimtools.scale_and_normalize_vector(airsimtools.get_velocity(drone_pos, targets[0], 2), 1)
+                    velocity = [i  * alpha / 100 for i in velocity]
                     drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, ROUND_DECIMALS), np.round(drone_pos.y_val, ROUND_DECIMALS), np.round(drone_pos.z_val, ROUND_DECIMALS))
 
                     client.moveByVelocityAsync(velocity[0] + float(n),velocity[1] +  float(e),velocity[2] +  float(d) , 0.1).join()
@@ -160,13 +164,23 @@ if __name__ == "__main__":
                     agent.train()
                     rewards += reward # calculate total rewards
                     step_count += 1
-                    if done:
-                        if info['overlap']:
-                            status = (f'Episode: {episode:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: fail')
+                    if args.infinite_loop:
+                        episode -= 1
+                        if done:
+                            if info['overlap']:
+                                status = (f'Episode: {infinit_loop_cnt:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: fail')
+                            else:
+                                status = (f'Episode: {infinit_loop_cnt:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: success')
                         else:
-                            status = (f'Episode: {episode:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: success')
+                            status = (f'Episode: {infinit_loop_cnt:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: run')
                     else:
-                        status = (f'Episode: {episode:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: run')
+                        if done:
+                            if info['overlap']:
+                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: fail')
+                            else:
+                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: success')
+                        else:
+                            status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: run')
                     sys.stdout.write('\r' + status)
                     sys.stdout.flush()
 

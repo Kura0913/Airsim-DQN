@@ -10,7 +10,7 @@ class AirsimDroneEnv(gym.Env):
     def __init__(self, reward_function, sensor_num):
         super(AirsimDroneEnv, self).__init__()
         self.sensor_num = sensor_num
-        self.action_space = spaces.Box(low=np.array([-100, -100, -100]), high=np.array([100, 100, 100]), dtype=np.float32)
+        self.action_space = spaces.Box(low=np.array([-100, -100, -100, 0]), high=np.array([100, 100, 100, 100]), dtype=np.float32)
         self.observation_space = spaces.Box(low=np.zeros(self.sensor_num), high=np.array([20]*self.sensor_num), dtype=np.float32)
         self.state = np.full(self.sensor_num, 20)
         self.reward_function = reward_function
