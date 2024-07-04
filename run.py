@@ -139,7 +139,7 @@ if __name__ == "__main__":
                     if agent.train_cnt == 0:
                         loss_avg = 0
                     else:
-                        loss_avg = np.round(total_loss.detach().numpy() / agent.train_cnt, 4)
+                        loss_avg = np.round(total_loss.cpu().detach().numpy() / agent.train_cnt, 4)
                     if args.infinite_loop:
                         episode -= 1
                         if done:
