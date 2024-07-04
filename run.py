@@ -78,8 +78,9 @@ def listen_for_stop():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate distance between two coordinates.")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
-    parser.add_argument('--episodes', type=int, default=10000, help='number of training')
-    parser.add_argument('--epsilon', type=float, default=0.99, help='weight of previous reward')
+    parser.add_argument('--episodes', type=int, default=5, help='number of training')
+    parser.add_argument('--gamma', type=float, default=0.99, help='weight of future reward')
+    parser.add_argument('--epsilon', type=float, default=0.99, help='random action rate')
     parser.add_argument('--epsilon_min', type=float, default=0.2, help='epsilon\'s minimum')
     parser.add_argument('--decay', type=float, default=0.999, help='epsilon\'s decay rate')
     parser.add_argument('--infinite_loop', type=bool, default=False, help='keep training until press the stop button')
@@ -106,7 +107,7 @@ if __name__ == "__main__":
         client.confirmConnection()
         state_dim = len(get_distance_sensor_data(client, drone_name)) + 3
         env = AirsimDroneEnv(calculate_reward, state_dim, client, DISTANCE_SENSOR)
-        agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, epsilon=args.epsilon, device=device)
+        agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, epsilon=args.epsilon, gamma=args.gamma, device=device)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
@@ -141,7 +142,7 @@ if __name__ == "__main__":
                     state = next_state
                     targets = info['targets']
                     
-                    loss = agent.train()
+                    loss, curr_epsilon = agent.train()
                     if loss >= 0:
                         total_loss += loss
                     rewards += reward # calculate total rewards
@@ -155,19 +156,19 @@ if __name__ == "__main__":
                         if done:
                             targets = get_targets(client, objects, ROUND_DECIMALS)
                             if info['overlap']:
-                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: fail')
+                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: fail')
                             else:
-                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: success')
+                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: success')
                         else:
-                            status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: run')
+                            status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: run')
                     else:
                         if done:
                             if info['overlap']:
-                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: fail')
+                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: fail')
                             else:
-                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: success')
+                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: success')
                         else:
-                            status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: run')
+                            status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: run')
                     sys.stdout.write('\r' + status)
                     sys.stdout.flush()
                 episode += 1

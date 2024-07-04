@@ -237,7 +237,8 @@ python run.py
 |:---------------:|:-----------:|:--------------------------------------------------------------------------------|
 | --episodes      | 5           | training cycle                                                                  |
 | --batch_size    | 64          | number of training samples                                                      |
-| --epsilon       | 0.99        | estimated reward weight                                                         |
+| --gamma         | 0.99        | weight of future reward                                                         |
+| --epsilon       | 0.99        | random action rate                                                              |
 | --epsilon_min   | 0.2         | epsilon's minimum                                                               |
 | --decay         | 0.999       | epsilon's decay rate                                                            |
 | --object        | BP_Grid     | eearch object name                                                              |

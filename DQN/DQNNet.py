@@ -4,6 +4,8 @@ import torch.nn as nn
 class DQNNet(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(DQNNet, self).__init__()
+        self.state_dim = state_dim
+        self.action_dim = action_dim
         self.fc1 = nn.Linear(state_dim, 256)
         self.bn1 = nn.BatchNorm1d(256)
         self.fc2 = nn.Linear(256, 256)
