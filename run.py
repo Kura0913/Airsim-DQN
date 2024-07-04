@@ -143,6 +143,7 @@ if __name__ == "__main__":
                     targets = info['targets']
                     
                     loss, curr_epsilon = agent.train()
+                    curr_epsilon = np.round(curr_epsilon, 4)
                     if loss >= 0:
                         total_loss += loss
                     rewards += reward # calculate total rewards
@@ -156,19 +157,19 @@ if __name__ == "__main__":
                         if done:
                             targets = get_targets(client, objects, ROUND_DECIMALS)
                             if info['overlap']:
-                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: fail')
+                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: fail')
                             else:
-                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: success')
+                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: success')
                         else:
-                            status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: run')
+                            status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: run')
                     else:
                         if done:
                             if info['overlap']:
-                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: fail')
+                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: fail')
                             else:
-                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: success')
+                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: success')
                         else:
-                            status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {np.round(curr_epsilon, 4):.4f} | mission_state: run')
+                            status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: run')
                     sys.stdout.write('\r' + status)
                     sys.stdout.flush()
                 episode += 1
