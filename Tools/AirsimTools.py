@@ -30,7 +30,6 @@ def scale_and_normalize_vector(v, n):
     else:
         unit_vector = v
 
-    # 缩放单位向量并输出
     scaled_vector = n * unit_vector
     return scaled_vector
 

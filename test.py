@@ -12,20 +12,7 @@ import threading
 import keyboard
 import time
 
-DISTANCE_SENSOR = {
-    "f" : "front",
-    "l" : "left",
-    "r" : "right",
-    "rf" : "rfront",
-    "lf" : "lfront",
-    "t" : "top",
-    "b" : "bottom",
-    'lfb': 'lfbottom',
-    'rfb': 'rfbottom',    
-    'lbb': 'lbbottom',
-    'rbb': 'rbbottom',
-    
-}
+DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
 ROUND_DECIMALS = 2
 BASE_PTAH = '.\\execute\\runs\\'
@@ -34,22 +21,21 @@ exit_flag = False
 
 def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
     sensor_data = []
-    for _, value in DISTANCE_SENSOR.items():
-        sensor_data.append(client.getDistanceSensorData(value, drone_name).distance)
+    for sensor_name in DISTANCE_SENSOR:
+        sensor_data.append(client.getDistanceSensorData(sensor_name, drone_name).distance)
     return sensor_data
 
-def calculate_reward(state, action, next_state, done, overlap, prev_dis, drone_position, curr_target):
-    curr_distance = airsimtools.calculate_distance(drone_position, curr_target)
+def calculate_reward(done, overlap, prev_dis, curr_dis):
     if done:
         if overlap:
-            return -1000, {'prev_dis' : -1}
+            return -10, {'prev_dis' : -1}
         else:
-            return 1000, {'prev_dis' : -1}
+            return 10, {'prev_dis' : -1}
     else:
-        if prev_dis < 0 or curr_distance < prev_dis:
-            return 1, {'prev_dis' : curr_distance}
+        if prev_dis < 0 or curr_dis < prev_dis:
+            return 1, {'prev_dis' : curr_dis}
         else:
-            return -2, {'prev_dis' : curr_distance}
+            return -2, {'prev_dis' : curr_dis}
 
 def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
 
@@ -99,9 +85,9 @@ if __name__ == "__main__":
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
         client.confirmConnection()        
-        sensor_num = len(get_distance_sensor_data(client, drone_name))
-        env = AirsimDroneEnv(calculate_reward, sensor_num)
-        agent = DQNAgent(state_dim=sensor_num, action_dim=3)
+        state_dim = len(get_distance_sensor_data(client, drone_name)) + 3
+        env = AirsimDroneEnv(calculate_reward, state_dim, client, DISTANCE_SENSOR)
+        agent = DQNAgent(state_dim=state_dim, action_dim=3)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
@@ -128,17 +114,7 @@ if __name__ == "__main__":
                 step_count = 0
                 while not done:
                     action = agent.act(state)
-                    n, e, d = action
-                    n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
-                    if step_count <= 0:
-                        client.takeoffAsync(10, drone_name).join()
-
-                    client.moveByVelocityAsync(float(n), float(e), float(d) , 0.1).join()
-                    
-                    sensor_values = get_distance_sensor_data(client, drone_name)
-                    drone_pos = client.simGetVehiclePose().position
-                    drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, ROUND_DECIMALS), np.round(drone_pos.y_val, ROUND_DECIMALS), np.round(drone_pos.z_val, ROUND_DECIMALS))
-                    next_state, reward, done, _, info = env.step(action, sensor_values, targets = targets, drone_position=drone_pos, step_cnt = step_count)                
+                    next_state, reward, done, _, info = env.step(action, targets = targets, drone_name=drone_name, step_cnt = step_count)                
                     
                     state = next_state
                     rewards += reward # calculate total rewards

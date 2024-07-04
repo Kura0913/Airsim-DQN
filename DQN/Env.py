@@ -3,6 +3,7 @@ from gymnasium import spaces
 import numpy as np
 import Tools.AirsimTools as airsimtools
 import airsim
+import math
 
 DOWN_SENSOR_IDX = 6
 INITIAL_DISTANCE = -1
@@ -26,7 +27,6 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name, sensor_
     for sensor_name in sensor_list:
         sensor_data.append(client.getDistanceSensorData(sensor_name, drone_name).distance)
     return sensor_data
-
 
 class AirsimDroneEnv(gym.Env):
     def __init__(self, reward_function, state_dim, client:airsim.MultirotorClient, sensor_list):
@@ -56,7 +56,7 @@ class AirsimDroneEnv(gym.Env):
         n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
         if step_cnt <= 0: # before action, take off the drone
             self.client.takeoffAsync(5, drone_name).join()
-        self.client.moveByVelocityAsync(float(n), float(e), float(d), 0.1).join() # drone move
+        self.client.moveByVelocityAsync(float(n), float(e), float(d), 0.1, yaw_mode=airsimtools.get_yaw_mode_F([float(n), float(e), float(d)])).join() # drone move
 
         sensor_data = get_distance_sensor_data(self.client, drone_name = drone_name, sensor_list=self.sensor_list)
         drone_position = self.client.simGetVehiclePose(drone_name).position
