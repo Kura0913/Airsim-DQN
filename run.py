@@ -153,6 +153,7 @@ if __name__ == "__main__":
                     if args.infinite_loop:
                         episode -= 1
                         if done:
+                            targets = get_targets(client, objects, ROUND_DECIMALS)
                             if info['overlap']:
                                 status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: fail')
                             else:

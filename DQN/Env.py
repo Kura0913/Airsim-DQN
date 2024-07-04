@@ -43,7 +43,7 @@ class AirsimDroneEnv(gym.Env):
     def reset(self):
         self.state = np.full(self.state_dim, 20)
         self.prev_dis = INITIAL_DISTANCE
-
+        
         return self.state, {}
     
     def step(self, action, targets, step_cnt, drone_name):
