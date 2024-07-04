@@ -112,7 +112,7 @@ if __name__ == "__main__":
         client = airsim.MultirotorClient()
         client.confirmConnection()
         sensor_num = len(get_distance_sensor_data(client, drone_name))
-        env = AirsimDroneEnv(calculate_reward, sensor_num)
+        env = AirsimDroneEnv(calculate_reward, sensor_num, client)
         agent = DQNAgent(state_dim=sensor_num + 3, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
         episodes = args.episodes
 
