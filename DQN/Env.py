@@ -48,9 +48,7 @@ class AirsimDroneEnv(gym.Env):
     
     def step(self, action, targets, step_cnt, drone_name):
         '''
-        senor_values: [front, left, right, front_left, front_right, top, bottom]
         targets:[[n, e, d]]
-        drone_position:[n, e, d]
         '''
         n, e, d = action
         n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)

@@ -25,17 +25,27 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
         sensor_data.append(client.getDistanceSensorData(sensor_name, drone_name).distance)
     return sensor_data
 
-def calculate_reward(done, overlap, prev_dis, curr_dis):
+def calculate_reward(done, overlap, prev_dis, curr_dis, targets):
+    reward = 0
+    if curr_dis < 0.5:
+            reward += 5
+            del targets[0]
     if done:
-        if overlap:
-            return -10, {'prev_dis' : -1}
-        else:
-            return 10, {'prev_dis' : -1}
+        if overlap: # mission fail
+            return reward - 10, {'prev_dis' : -1, 'targets': targets}
+        else: # mission success
+            return reward + 10, {'prev_dis' : -1, 'targets': targets}
     else:
-        if prev_dis < 0 or curr_dis < prev_dis:
-            return 1, {'prev_dis' : curr_dis}
+        if reward > 0: # arrive current target, reset the distance value to -1
+            if prev_dis < 0 or curr_dis < prev_dis:
+                return reward + 1, {'prev_dis' : -1, 'targets': targets}
+            else:
+                return reward - 2, {'prev_dis' : -1, 'targets': targets}
         else:
-            return -2, {'prev_dis' : curr_dis}
+            if prev_dis < 0 or curr_dis < prev_dis: # drone is closer the target than before
+                return reward + 1, {'prev_dis' : curr_dis, 'targets': targets}
+            else: # drone is further the target than before
+                return reward - 2, {'prev_dis' : curr_dis, 'targets': targets}
 
 def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
 
@@ -117,6 +127,7 @@ if __name__ == "__main__":
                     next_state, reward, done, _, info = env.step(action, targets = targets, drone_name=drone_name, step_cnt = step_count)                
                     
                     state = next_state
+                    targets = info['targets']
                     rewards += reward # calculate total rewards
                     step_count += 1
                     if done:
