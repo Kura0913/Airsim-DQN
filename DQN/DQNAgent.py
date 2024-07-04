@@ -19,6 +19,7 @@ class DQNAgent:
         self.memory = ReplayBuffer(buffer_capacity)
         self.batch_size = bacth_size
         self.gamma = gamma
+        self.train_cnt = 0
         self.update_target()
 
     def update_target(self):
@@ -40,8 +41,8 @@ class DQNAgent:
 
     def train(self):
         if len(self.memory) < self.batch_size:
-            return
-        
+            return -1
+        self.train_cnt += 1
         experiences = self.memory.sample(self.batch_size)
         batch = Experience(*zip(*experiences))
 
@@ -70,6 +71,8 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        return loss
 
     def save(self, path):
         torch.save(self.policy_net.state_dict(), path)

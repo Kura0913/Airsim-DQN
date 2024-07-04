@@ -14,6 +14,7 @@ import threading
 import keyboard
 import time
 
+ROUND_DECIMALS = 2
 DISTANCE_SENSOR = {
     "f" : "front",
     "l" : "left",
@@ -23,13 +24,11 @@ DISTANCE_SENSOR = {
     "t" : "top",
     "b" : "bottom",
     'lfb': 'lfbottom',
-    'rfb': 'rfbottom',    
+    'rfb': 'rfbottom',
     'lbb': 'lbbottom',
-    'rbb': 'rbbottom',
-    
+    'rbb': 'rbbottom'    
 }
 
-ROUND_DECIMALS = 2
 BASE_PTAH = '.\\runs\\'
 
 exit_flag = False
@@ -47,18 +46,17 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
                     client.getDistanceSensorData(DISTANCE_SENSOR["lbb"], drone_name).distance,
                     client.getDistanceSensorData(DISTANCE_SENSOR["rbb"], drone_name).distance]
 
-def calculate_reward(state, action, next_state, done, overlap, prev_dis, drone_position, curr_target):
-    curr_distance = airsimtools.calculate_distance(drone_position, curr_target)
+def calculate_reward(done, overlap, prev_dis, curr_dis):
     if done:
         if overlap:
-            return -1000, {'prev_dis' : -1}
+            return -10, {'prev_dis' : -1}
         else:
-            return 1000, {'prev_dis' : -1}
+            return 10, {'prev_dis' : -1}
     else:
-        if prev_dis < 0 or curr_distance < prev_dis:
-            return 1, {'prev_dis' : curr_distance}
+        if prev_dis < 0 or curr_dis < prev_dis:
+            return 1, {'prev_dis' : curr_dis}
         else:
-            return -2, {'prev_dis' : curr_distance}
+            return -2, {'prev_dis' : curr_dis}
 
 def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
 
@@ -115,7 +113,7 @@ if __name__ == "__main__":
         client.confirmConnection()
         sensor_num = len(get_distance_sensor_data(client, drone_name))
         env = AirsimDroneEnv(calculate_reward, sensor_num)
-        agent = DQNAgent(state_dim=sensor_num, action_dim=4, bacth_size=args.batch_size, gamma=args.gamma, device=device)
+        agent = DQNAgent(state_dim=sensor_num + 3, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
@@ -131,8 +129,8 @@ if __name__ == "__main__":
                 except:
                     print(f"The path:{args.weight} is not exist, load weight fail.")
             
-            infinit_loop_cnt = 0
-            for episode in range(episodes):
+            episode = 0
+            while episode < episodes:
                 if stop_event.is_set(): # if stop event is set, stop training and save the weight
                     break
                 client.reset()
@@ -141,49 +139,44 @@ if __name__ == "__main__":
                 done = False
                 rewards = 0
                 step_count = 0
-                infinit_loop_cnt += 1
+                total_loss = 0
+                agent.train_cnt = 0
                 while not done:
-                    action = agent.act(state)
-                    n, e, d, alpha = action
-                    n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
-                    if step_count <= 0:
-                        client.takeoffAsync(10, drone_name).join()
-                    
-                    drone_pos = client.simGetVehiclePose(drone_name).position
-                    velocity = airsimtools.scale_and_normalize_vector(airsimtools.get_velocity(drone_pos, targets[0], 2), 1)
-                    velocity = [i  * alpha / 100 for i in velocity]
-                    drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, ROUND_DECIMALS), np.round(drone_pos.y_val, ROUND_DECIMALS), np.round(drone_pos.z_val, ROUND_DECIMALS))
-
-                    client.moveByVelocityAsync(velocity[0] + float(n),velocity[1] +  float(e),velocity[2] +  float(d) , 0.1).join()
-                    
-                    sensor_values = get_distance_sensor_data(client, drone_name)
-                    next_state, reward, done, _, info = env.step(action, sensor_values, targets = targets, drone_position=drone_pos, step_cnt = step_count)                
+                    action = agent.act(state)                    
+                    next_state, reward, done, _, info = env.step(action, targets, step_cnt=step_count, drone_name=drone_name)
                     agent.store_experience(state, action, reward, next_state, done)
                     state = next_state
+                    targets = info['targets']
                     
-                    agent.train()
+                    loss = agent.train()
+                    if loss >= 0:
+                        total_loss += loss
                     rewards += reward # calculate total rewards
                     step_count += 1
+                    if agent.train_cnt == 0:
+                        loss_avg = 0
+                    else:
+                        loss_avg = np.round(total_loss.detach().numpy() / agent.train_cnt, 4)
                     if args.infinite_loop:
                         episode -= 1
                         if done:
                             if info['overlap']:
-                                status = (f'Episode: {infinit_loop_cnt:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: fail')
+                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: fail')
                             else:
-                                status = (f'Episode: {infinit_loop_cnt:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: success')
+                                status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: success')
                         else:
-                            status = (f'Episode: {infinit_loop_cnt:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: run')
+                            status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: run')
                     else:
                         if done:
                             if info['overlap']:
-                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: fail')
+                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: fail')
                             else:
-                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: success')
+                                status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: success')
                         else:
-                            status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: run')
+                            status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | mission_state: run')
                     sys.stdout.write('\r' + status)
                     sys.stdout.flush()
-
+                episode += 1
                 print(f'\r')
 
             agent.save(f"{dqntools.create_directory(BASE_PTAH)}\\model.pth") # save weight
