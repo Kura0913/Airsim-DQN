@@ -33,17 +33,10 @@ BASE_PTAH = '.\\execute\\runs\\'
 exit_flag = False
 
 def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
-    return [client.getDistanceSensorData(DISTANCE_SENSOR["f"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["l"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["r"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["lf"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["rf"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["t"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["b"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["lfb"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["rfb"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["lbb"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["rbb"], drone_name).distance]
+    sensor_data = []
+    for _, value in DISTANCE_SENSOR.items():
+        sensor_data.append(client.getDistanceSensorData(value, drone_name).distance)
+    return sensor_data
 
 def calculate_reward(state, action, next_state, done, overlap, prev_dis, drone_position, curr_target):
     curr_distance = airsimtools.calculate_distance(drone_position, curr_target)

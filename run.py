@@ -15,36 +15,17 @@ import keyboard
 import time
 
 ROUND_DECIMALS = 2
-DISTANCE_SENSOR = {
-    "f" : "front",
-    "l" : "left",
-    "r" : "right",
-    "rf" : "rfront",
-    "lf" : "lfront",
-    "t" : "top",
-    "b" : "bottom",
-    'lfb': 'lfbottom',
-    'rfb': 'rfbottom',
-    'lbb': 'lbbottom',
-    'rbb': 'rbbottom'    
-}
+DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
 BASE_PTAH = '.\\runs\\'
 
 exit_flag = False
 
 def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
-    return [client.getDistanceSensorData(DISTANCE_SENSOR["f"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["l"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["r"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["lf"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["rf"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["t"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["b"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["lfb"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["rfb"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["lbb"], drone_name).distance,
-                    client.getDistanceSensorData(DISTANCE_SENSOR["rbb"], drone_name).distance]
+    sensor_data = []
+    for sensor_name in DISTANCE_SENSOR:
+        sensor_data.append(client.getDistanceSensorData(sensor_name, drone_name).distance)
+    return sensor_data
 
 def calculate_reward(done, overlap, prev_dis, curr_dis):
     if done:
@@ -88,7 +69,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate distance between two coordinates.")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--episodes', type=int, default=5, help='number of training')
-    parser.add_argument('--gamma', type=float, default=0.99, help='weight of previous reward')
+    parser.add_argument('--epsilon', type=float, default=0.99, help='weight of previous reward')
+    parser.add_argument('--epsilon_min', type=float, default=0.2, help='epsilon\'s minimum')
+    parser.add_argument('--decay', type=float, default=0.999, help='epsilon\'s decay rate')
     parser.add_argument('--infinite_loop', type=bool, default=False, help='keep training until press the stop button')
     parser.add_argument('--weight', type=str, default='', help='weight path')
     parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda'], help='Device to use for training (cpu or cuda)')
@@ -111,9 +94,9 @@ if __name__ == "__main__":
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
         client.confirmConnection()
-        sensor_num = len(get_distance_sensor_data(client, drone_name))
-        env = AirsimDroneEnv(calculate_reward, sensor_num, client)
-        agent = DQNAgent(state_dim=sensor_num + 3, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
+        state_dim = len(get_distance_sensor_data(client, drone_name)) + 3
+        env = AirsimDroneEnv(calculate_reward, state_dim, client, DISTANCE_SENSOR)
+        agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, epsilon=args.epsilon, device=device)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')

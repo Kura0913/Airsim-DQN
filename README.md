@@ -237,7 +237,9 @@ python run.py
 |:---------------:|:-----------:|:--------------------------------------------------------------------------------|
 | --episodes      | 5           | training cycle                                                                  |
 | --batch_size    | 64          | number of training samples                                                      |
-| --gamma         | 0.99        | estimated reward weight                                                         |
+| --epsilon       | 0.99        | estimated reward weight                                                         |
+| --epsilon_min   | 0.2         | epsilon's minimum                                                               |
+| --decay         | 0.999       | epsilon's decay rate                                                            |
 | --object        | BP_Grid     | eearch object name                                                              |
 | --device        | cpu         | cuda or cpu                                                                     |
 | --weight        |             | the default value is empty. You can enter the weight path to continue training  |

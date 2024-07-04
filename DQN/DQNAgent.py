@@ -9,7 +9,7 @@ from collections import namedtuple
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
 class DQNAgent:
-    def __init__(self, state_dim, action_dim, buffer_capacity = 10000, bacth_size = 64, gamma = 0.99, lr = 1e-3, device = 'cpu'):
+    def __init__(self, state_dim, action_dim, buffer_capacity = 10000, bacth_size = 64, epsilon = 0.99, epsilon_min = 0.2, epsilon_decay = 0.999, lr = 1e-3, device = 'cpu'):
         print(f'state_dim:{state_dim}')
         self.device = device
         self.policy_net = DQNNet(state_dim, action_dim).to(self.device)
@@ -18,8 +18,10 @@ class DQNAgent:
         self.criterion = nn.MSELoss()
         self.memory = ReplayBuffer(buffer_capacity)
         self.batch_size = bacth_size
-        self.gamma = gamma
         self.train_cnt = 0
+        self.epsilon = epsilon
+        self.epsilon_min = epsilon_min
+        self.epsilon_decay = epsilon_decay
         self.update_target()
 
     def update_target(self):
@@ -65,7 +67,10 @@ class DQNAgent:
 
         # Get the maximum Q-values from the target network for the next state
         next_q_values = self.target_net(next_state).max(1)[0]
-        expected_q_values = reward + (1 - done) * self.gamma * next_q_values
+        expected_q_values = reward + (1 - done) * self.epsilon * next_q_values
+
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
 
         loss = self.criterion(q_values_for_actions, expected_q_values)
         self.optimizer.zero_grad()
