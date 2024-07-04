@@ -67,14 +67,14 @@ class AirsimDroneEnv(gym.Env):
         self.state = np.array(drone_data)
         done, overlap = self.check_done(drone_data, targets, drone_position, step_cnt)
         curr_dis = airsimtools.calculate_distance(drone_position, targets[0])
-        if curr_dis < 0.5:
-            del targets[0]
+        
         if len(targets) > 0:
-            reward, info = self.reward_function(done, overlap, self.prev_dis, curr_dis)
+            reward, info = self.reward_function(done, overlap, self.prev_dis, curr_dis, targets)
         else:
-            reward, info = self.reward_function(done, overlap, self.prev_dis, curr_dis)
+            reward, info = self.reward_function(done, overlap, self.prev_dis, curr_dis, targets)
 
         self.prev_dis = info['prev_dis']
+        targets = info['targets']
 
         return self.state, reward, done, False, {'velocity': action, 'overlap': overlap, 'targets' : targets}
 
