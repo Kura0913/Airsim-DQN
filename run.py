@@ -102,7 +102,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate distance between two coordinates.")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--episodes', type=int, default=5, help='number of training')
-    parser.add_argument('--dacey_episode', type=int, default=500, help='set the episode where epsilon starts to dacey')
+    parser.add_argument('--decay_episode', type=int, default=500, help='set the episode where epsilon starts to decay')
     parser.add_argument('--gamma', type=float, default=0.99, help='weight of future reward')
     parser.add_argument('--epsilon', type=float, default=1, help='random action rate')
     parser.add_argument('--epsilon_min', type=float, default=0.2, help='epsilon\'s minimum')
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         # len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN
         state_dim = len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN 
         env = AirsimDroneEnv(calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
-        agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, epsilon=args.epsilon, dacey_episode=args.dacey_episode, gamma=args.gamma, device=device)
+        agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, epsilon=args.epsilon, decay_episode=args.decay_episode, gamma=args.gamma, device=device)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
