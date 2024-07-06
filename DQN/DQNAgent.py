@@ -9,7 +9,7 @@ from collections import namedtuple
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
 class DQNAgent:
-    def __init__(self, state_dim, action_dim, buffer_capacity = 10000, bacth_size = 64, epsilon = 1, epsilon_min = 0.2, epsilon_decay = 0.999, gamma = 0.9, device = 'cpu'):
+    def __init__(self, state_dim, action_dim, buffer_capacity = 10000, bacth_size = 64, epsilon = 1, epsilon_min = 0.2, epsilon_decay = 0.999,dacey_episode = 500, gamma = 0.9, device = 'cpu'):
         print(f'state_dim:{state_dim}')
         self.device = device
         self.policy_net = DQNNet(state_dim, action_dim).to(self.device)
@@ -23,6 +23,7 @@ class DQNAgent:
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
+        self.dacey_episode = dacey_episode
         self.update_target()
 
     def update_target(self):
@@ -74,7 +75,7 @@ class DQNAgent:
         next_q_values = self.target_net(next_state).max(1)[0]
         expected_q_values = reward + (1 - done) * self.gamma * next_q_values
 
-        if self.epsilon > self.epsilon_min and episode > 300:
+        if self.epsilon > self.epsilon_min and episode >= self.dacey_episode:
             self.epsilon *= self.epsilon_decay
 
         loss = self.criterion(q_values_for_actions, expected_q_values)

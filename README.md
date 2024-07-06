@@ -241,6 +241,7 @@ python run.py
 | --gamma         | 0.99        | weight of future reward                                                         |
 | --epsilon       | 1.00        | random action rate                                                              |
 | --epsilon_min   | 0.2         | epsilon's minimum                                                               |
+| --dacey_episode | 500         | set the episode where epsilon starts to dacey                                   |
 | --decay         | 0.999       | epsilon's decay rate                                                            |
 | --object        | BP_Grid     | eearch object name                                                              |
 | --device        | cpu         | cuda or cpu                                                                     |
