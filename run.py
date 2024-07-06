@@ -3,6 +3,7 @@ from DQN.Env import AirsimDroneEnv
 from ShortestPath import TravelerShortestPath as tsp
 import Tools.AirsimTools as airsimtools
 import Tools.DQNTools as dqntools
+import matplotlib.pyplot as plt
 import numpy as np
 import airsim
 import os
@@ -15,6 +16,8 @@ import keyboard
 import time
 
 ROUND_DECIMALS = 2
+DRONE_POSITION_LEN = 3
+TARGET_POSITION_LEN = 3
 DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
 BASE_PTAH = '.\\runs\\'
@@ -63,7 +66,6 @@ def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
     drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, round_decimals), np.round(drone_pos.y_val, round_decimals), np.round(drone_pos.z_val, round_decimals))
     target_pos_ary = tsp.getTSP(target_pos_ary, drone_pos)
     del target_pos_ary[0]
-    print('best path:', target_pos_ary)
     return target_pos_ary
 
 # waiting for pressing 'p' key to stop
@@ -74,6 +76,30 @@ def listen_for_stop():
             stop_event.set()
             break
         time.sleep(0.1)
+
+def plot_rewards_and_losses(episodes, rewards, average_losses, save_path):
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+
+    # Plot rewards as bars
+    ax1.bar(episodes, rewards, color='blue', alpha=0.6, label='Rewards')
+    ax1.set_xlabel('Episodes')
+    ax1.set_ylabel('Rewards', color='blue')
+    ax1.tick_params(axis='y', labelcolor='blue')
+
+    # Create a second y-axis for average losses
+    ax2 = ax1.twinx()
+    ax2.plot(episodes, average_losses, color='red', label='Average Loss')
+    ax2.set_ylabel('Average Loss', color='red')
+    ax2.tick_params(axis='y', labelcolor='red')
+
+    # Add legends and grid
+    fig.tight_layout()
+    fig.legend(loc='upper left', bbox_to_anchor=(0.1,0.9))
+    ax1.grid(True)
+
+    # Save and show the plot
+    plt.savefig(save_path)
+    plt.show()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate distance between two coordinates.")
@@ -88,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda'], help='Device to use for training (cpu or cuda)')
     parser.add_argument('--object', type=str, default='BP_Grid', help='The object name in the vr environment, you can place objects in the VR environment and make sure that the objects you want to visit start with the same name.. Initial object is: BP_Grid')
     args = parser.parse_args()
-    # to stop training and save the weight    
+    # to stop training and save the weight
     stop_event = threading.Event()
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -105,13 +131,15 @@ if __name__ == "__main__":
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
         client.confirmConnection()
-        state_dim = len(get_distance_sensor_data(client, drone_name)) + 3
-        env = AirsimDroneEnv(calculate_reward, state_dim, client, DISTANCE_SENSOR)
+        # len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN
+        state_dim = len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN 
+        env = AirsimDroneEnv(calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
         agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, epsilon=args.epsilon, gamma=args.gamma, device=device)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
         targets = get_targets(client, objects, ROUND_DECIMALS)
+        print('best path:', targets)
         # start the thread
         stop_thread = threading.Thread(target=listen_for_stop)
         stop_thread.start()
@@ -124,12 +152,14 @@ if __name__ == "__main__":
                     print(f"The path:{args.weight} is not exist, load weight fail.")
             
             episode = 0
+            eposide_reward = []
+            eposide_loss_avg = []
             while episode < episodes:
                 if stop_event.is_set(): # if stop event is set, stop training and save the weight
                     break
                 client.reset()
                 client.enableApiControl(True)
-                state, _ = env.reset()
+                state, _ = env.reset(targets[0])
                 done = False
                 rewards = 0
                 step_count = 0
@@ -142,7 +172,7 @@ if __name__ == "__main__":
                     state = next_state
                     targets = info['targets']
                     
-                    loss, curr_epsilon = agent.train()
+                    loss, curr_epsilon = agent.train(episode)
                     curr_epsilon = np.round(curr_epsilon, 4)
                     if loss >= 0:
                         total_loss += loss
@@ -153,7 +183,6 @@ if __name__ == "__main__":
                     else:
                         loss_avg = np.round(total_loss.cpu().detach().numpy() / agent.train_cnt, 4)
                     if args.infinite_loop:
-                        episode -= 1
                         if done:
                             targets = get_targets(client, objects, ROUND_DECIMALS)
                             if info['overlap']:
@@ -170,12 +199,17 @@ if __name__ == "__main__":
                                 status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: success')
                         else:
                             status = (f'Episode: {episode + 1:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: run')
+                        
                     sys.stdout.write('\r' + status)
                     sys.stdout.flush()
-                episode += 1
                 print(f'\r')
-
-            agent.save(f"{dqntools.create_directory(BASE_PTAH)}\\model.pth") # save weight
+                eposide_reward.append(rewards)
+                eposide_loss_avg.append(loss_avg)
+                if not args.infinite_loop:
+                    episode += 1
+            folder_path = dqntools.create_directory(BASE_PTAH)
+            agent.save(f"{folder_path}\\model.pth") # save weight
+            plot_rewards_and_losses(range(1, episodes + 1), eposide_reward, eposide_loss_avg, save_path=f'{folder_path}\\final_performance_plot.png')
             print("Updated model saved!")
             exit_flag = True
             stop_thread.join()

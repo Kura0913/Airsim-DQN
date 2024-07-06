@@ -29,10 +29,11 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name, sensor_
     return sensor_data
 
 class AirsimDroneEnv(gym.Env):
-    def __init__(self, reward_function, state_dim, client:airsim.MultirotorClient, sensor_list):
+    def __init__(self, reward_function, state_dim, client:airsim.MultirotorClient, drone_name, sensor_list):
         super(AirsimDroneEnv, self).__init__()
         self.state_dim = state_dim
         self.client = client
+        self.drone_name = drone_name
         self.action_space = spaces.Box(low=np.array([-100, -100, -100]), high=np.array([100, 100, 100]), dtype=np.float32)
         self.observation_space = spaces.Box(low=np.zeros(self.state_dim), high=np.array([20]*self.state_dim), dtype=np.float32)
         self.state = np.full(self.state_dim, 20)
@@ -40,8 +41,13 @@ class AirsimDroneEnv(gym.Env):
         self.prev_dis = INITIAL_DISTANCE
         self.sensor_list = sensor_list
 
-    def reset(self):
-        self.state = np.full(self.state_dim, 20)
+    def reset(self, curr_target):
+        drone_position = self.client.simGetVehiclePose(self.drone_name).position
+        drone_position = airsimtools.check_negative_zero(np.round(drone_position.x_val, ROUND_DECIMALS), np.round(drone_position.y_val, ROUND_DECIMALS), np.round(drone_position.z_val, ROUND_DECIMALS))
+        self.state = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                                drone_position[0], drone_position[1], drone_position[2], 
+                                curr_target[0], curr_target[1], curr_target[2],
+                               ], dtype=np.float32)
         self.prev_dis = INITIAL_DISTANCE
         
         return self.state, {}
@@ -58,9 +64,8 @@ class AirsimDroneEnv(gym.Env):
 
         sensor_data = get_distance_sensor_data(self.client, drone_name = drone_name, sensor_list=self.sensor_list)
         drone_position = self.client.simGetVehiclePose(drone_name).position
-        velocity = airsimtools.scale_and_normalize_vector(airsimtools.get_velocity(drone_position, targets[0], 2), 1)
         drone_position = airsimtools.check_negative_zero(np.round(drone_position.x_val, ROUND_DECIMALS), np.round(drone_position.y_val, ROUND_DECIMALS), np.round(drone_position.z_val, ROUND_DECIMALS))
-        drone_data = list(velocity) + sensor_data
+        drone_data = sensor_data + drone_position + targets[0]
         # get new state
         self.state = np.array(drone_data)
         done, overlap = self.check_done(drone_data, targets, drone_position, step_cnt)
@@ -78,7 +83,7 @@ class AirsimDroneEnv(gym.Env):
 
     def check_done(self, sensor_values, targets, drone_position, step_cnt):
         # Check if all values ​​except down_distance are less than 0.1
-        overlap = any(sensor < 0.05 for i, sensor in enumerate(sensor_values) if i not in {DOWN_SENSOR_IDX, 0, 1, 2})
+        overlap = any(sensor < 0.05 and sensor != -1 for i, sensor in enumerate(sensor_values) if i not in {DOWN_SENSOR_IDX, 11, 12, 13, 14, 15, 16})
         distance = airsimtools.calculate_distance(drone_position, targets[0])
         if overlap or distance > 100 or step_cnt > 500:
             return True, True

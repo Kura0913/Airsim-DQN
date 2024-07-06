@@ -15,6 +15,8 @@ import time
 DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
 ROUND_DECIMALS = 2
+DRONE_POSITION_LEN = 3
+TARGET_POSITION_LEN = 3
 BASE_PTAH = '.\\execute\\runs\\'
 
 exit_flag = False
@@ -61,8 +63,17 @@ def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
     drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, round_decimals), np.round(drone_pos.y_val, round_decimals), np.round(drone_pos.z_val, round_decimals))
     target_pos_ary = tsp.getTSP(target_pos_ary, drone_pos)
     del target_pos_ary[0]
-    print('best path:', target_pos_ary)
     return target_pos_ary
+
+def check_file_exists(file_path):
+    if os.path.exists(file_path):
+        print(f"The file {file_path} exists.")
+
+        return True
+    else:
+        print(f"The file {file_path} does not exist.")
+
+        return False
 
 # waiting for pressing 'p' key to stop
 def listen_for_stop():  
@@ -95,13 +106,14 @@ if __name__ == "__main__":
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
         client.confirmConnection()        
-        state_dim = len(get_distance_sensor_data(client, drone_name)) + 3
-        env = AirsimDroneEnv(calculate_reward, state_dim, client, DISTANCE_SENSOR)
+        state_dim = len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN 
+        env = AirsimDroneEnv(calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
         agent = DQNAgent(state_dim=state_dim, action_dim=3)
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
         targets = get_targets(client, objects, ROUND_DECIMALS)
+        print(f'best path: {targets}')
         # start the thread
         stop_thread = threading.Thread(target=listen_for_stop)
         stop_thread.start()
@@ -118,7 +130,7 @@ if __name__ == "__main__":
                     break
                 client.reset()
                 client.enableApiControl(True)
-                state, _ = env.reset()
+                state, _ = env.reset(targets[0])
                 done = False
                 rewards = 0
                 step_count = 0

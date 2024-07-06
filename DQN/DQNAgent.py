@@ -46,7 +46,7 @@ class DQNAgent:
                 action = self.policy_net(state).cpu().numpy()  # move tensor from gpu to cpu
             return action
         
-    def train(self):
+    def train(self, episode):
         if len(self.memory) < self.batch_size:
             return -1, self.epsilon
         self.train_cnt += 1
@@ -74,7 +74,7 @@ class DQNAgent:
         next_q_values = self.target_net(next_state).max(1)[0]
         expected_q_values = reward + (1 - done) * self.gamma * next_q_values
 
-        if self.epsilon > self.epsilon_min:
+        if self.epsilon > self.epsilon_min and episode > 300:
             self.epsilon *= self.epsilon_decay
 
         loss = self.criterion(q_values_for_actions, expected_q_values)
