@@ -31,26 +31,23 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
     return sensor_data
 
 def calculate_reward(done, overlap, prev_dis, curr_dis, targets):
-    reward = 0
+    arrive_target = False
     if curr_dis < 0.5:
-            reward += 5
+            arrive_target = True
             del targets[0]
     if done:
         if overlap: # mission fail
-            return reward - 10, {'prev_dis' : -1, 'targets': targets}
+            return -10, {'prev_dis' : -1, 'targets': targets}
         else: # mission success
-            return reward + 10, {'prev_dis' : -1, 'targets': targets}
+            return 15, {'prev_dis' : -1, 'targets': targets}
     else:
-        if reward > 0: # arrive current target, reset the distance value to -1
-            if prev_dis < 0 or curr_dis < prev_dis:
-                return reward + 1, {'prev_dis' : -1, 'targets': targets}
-            else:
-                return reward - 2, {'prev_dis' : -1, 'targets': targets}
+        if arrive_target: # arrive current target, reset the distance value to -1
+            return 5, {'prev_dis' : -1, 'targets': targets}
         else:
             if prev_dis < 0 or curr_dis < prev_dis: # drone is closer the target than before
-                return reward + 1, {'prev_dis' : curr_dis, 'targets': targets}
+                return 1, {'prev_dis' : curr_dis, 'targets': targets}
             else: # drone is further the target than before
-                return reward - 2, {'prev_dis' : curr_dis, 'targets': targets}
+                return -1, {'prev_dis' : curr_dis, 'targets': targets}
 
 def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
 
@@ -106,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--episodes', type=int, default=5, help='number of training')
     parser.add_argument('--gamma', type=float, default=0.99, help='weight of future reward')
-    parser.add_argument('--epsilon', type=float, default=0.99, help='random action rate')
+    parser.add_argument('--epsilon', type=float, default=1, help='random action rate')
     parser.add_argument('--epsilon_min', type=float, default=0.2, help='epsilon\'s minimum')
     parser.add_argument('--decay', type=float, default=0.999, help='epsilon\'s decay rate')
     parser.add_argument('--infinite_loop', type=bool, default=False, help='keep training until press the stop button')
@@ -166,7 +163,7 @@ if __name__ == "__main__":
                 total_loss = 0
                 agent.train_cnt = 0
                 while not done:
-                    action = agent.act(state)                    
+                    action = agent.act(state)
                     next_state, reward, done, _, info = env.step(action, targets, step_cnt=step_count, drone_name=drone_name)
                     agent.store_experience(state, action, reward, next_state, done)
                     state = next_state
@@ -209,7 +206,7 @@ if __name__ == "__main__":
                     episode += 1
             folder_path = dqntools.create_directory(BASE_PTAH)
             agent.save(f"{folder_path}\\model.pth") # save weight
-            plot_rewards_and_losses(range(1, episodes + 1), eposide_reward, eposide_loss_avg, save_path=f'{folder_path}\\final_performance_plot.png')
+            plot_rewards_and_losses(range(1, episode + 1), eposide_reward, eposide_loss_avg, save_path=f'{folder_path}\\final_performance_plot.png')
             print("Updated model saved!")
             exit_flag = True
             stop_thread.join()

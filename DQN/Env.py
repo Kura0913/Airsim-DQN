@@ -60,7 +60,7 @@ class AirsimDroneEnv(gym.Env):
         n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
         if step_cnt <= 0: # before action, take off the drone
             self.client.takeoffAsync(5, drone_name).join()
-        self.client.moveByVelocityAsync(float(n), float(e), float(d), 0.1, yaw_mode=airsimtools.get_yaw_mode_F([float(n), float(e), float(d)])).join() # drone move
+        self.client.moveByVelocityAsync(float(n), float(e), float(d), 0.3, yaw_mode=airsimtools.get_yaw_mode_F([float(n), float(e), float(d)])).join() # drone move
 
         sensor_data = get_distance_sensor_data(self.client, drone_name = drone_name, sensor_list=self.sensor_list)
         drone_position = self.client.simGetVehiclePose(drone_name).position

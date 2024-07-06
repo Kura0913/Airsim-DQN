@@ -9,7 +9,7 @@ from collections import namedtuple
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
 class DQNAgent:
-    def __init__(self, state_dim, action_dim, buffer_capacity = 10000, bacth_size = 64, epsilon = 0.99, epsilon_min = 0.2, epsilon_decay = 0.999, gamma = 0.9, device = 'cpu'):
+    def __init__(self, state_dim, action_dim, buffer_capacity = 10000, bacth_size = 64, epsilon = 1, epsilon_min = 0.2, epsilon_decay = 0.999, gamma = 0.9, device = 'cpu'):
         print(f'state_dim:{state_dim}')
         self.device = device
         self.policy_net = DQNNet(state_dim, action_dim).to(self.device)

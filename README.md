@@ -14,6 +14,7 @@ pip install numpy==1.21.6
 pip install opencv-python
 pip install msgpack-rpc-python
 pip install airsim
+pip install matplotlib==3.4.3
 pip install gymnasium
 pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
 pip install keyboard
@@ -238,7 +239,7 @@ python run.py
 | --episodes      | 5           | training cycle                                                                  |
 | --batch_size    | 64          | number of training samples                                                      |
 | --gamma         | 0.99        | weight of future reward                                                         |
-| --epsilon       | 0.99        | random action rate                                                              |
+| --epsilon       | 1.00        | random action rate                                                              |
 | --epsilon_min   | 0.2         | epsilon's minimum                                                               |
 | --decay         | 0.999       | epsilon's decay rate                                                            |
 | --object        | BP_Grid     | eearch object name                                                              |
