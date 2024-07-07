@@ -226,6 +226,7 @@ if __name__ == "__main__":
                     break
                 client.reset()
                 client.enableApiControl(True)
+                targets = get_targets(client, objects, ROUND_DECIMALS)
                 state, _ = env.reset(targets[0])
                 done = False
                 rewards = 0
@@ -272,7 +273,6 @@ if __name__ == "__main__":
                 print(f'\r')
                 eposide_reward.append(rewards)
                 eposide_loss_avg.append(loss_avg)
-                targets = get_targets(client, objects, ROUND_DECIMALS)
                 if not args.infinite_loop:
                     episode += 1
             folder_path = dqntools.create_directory(BASE_PTAH)

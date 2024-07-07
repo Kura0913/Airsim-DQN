@@ -109,6 +109,7 @@ if __name__ == "__main__":
                     break
                 client.reset()
                 client.enableApiControl(True)
+                targets = get_targets(client, objects, ROUND_DECIMALS)
                 state, _ = env.reset(targets[0])
                 done = False
                 rewards = 0
@@ -122,7 +123,6 @@ if __name__ == "__main__":
                     rewards += reward # calculate total rewards
                     step_count += 1
                     if done:
-                        targets = get_targets(client, objects, ROUND_DECIMALS)
                         if info['overlap']:
                             status = (f'Episode: {episode:5d}/{episodes} | Step: {step_count:3d} | Reward: {rewards:5d} | mission_state: fail')
                         else:
