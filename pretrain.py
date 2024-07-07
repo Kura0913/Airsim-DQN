@@ -47,24 +47,6 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
         sensor_data.append(client.getDistanceSensorData(sensor_name, drone_name).distance)
     return sensor_data
 
-def calculate_reward(done, overlap, prev_dis, curr_dis, targets):
-    arrive_target = False
-    if curr_dis < 0.5:
-            arrive_target = True
-            del targets[0]
-    if done:
-        if overlap: # mission fail
-            return -10, {'prev_dis' : -1, 'targets': targets}
-        else: # mission success
-            return 15, {'prev_dis' : -1, 'targets': targets}
-    else:
-        if arrive_target: # arrive current target, reset the distance value to -1
-            return 5, {'prev_dis' : -1, 'targets': targets}
-        else:
-            if prev_dis < 0 or curr_dis < prev_dis: # drone is closer the target than before
-                return 1, {'prev_dis' : curr_dis, 'targets': targets}
-            else: # drone is further the target than before
-                return -1, {'prev_dis' : curr_dis, 'targets': targets}
 
 def plot_rewards_and_losses(episodes, rewards, average_losses, save_path):
     fig, ax1 = plt.subplots(figsize=(12, 6))
@@ -225,7 +207,7 @@ if __name__ == "__main__":
         client.confirmConnection()
         # len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN
         state_dim = len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN 
-        env = AirsimDroneEnv(calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
+        env = AirsimDroneEnv(dqntools.calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
         agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
         episodes = args.episodes
         objects = client.simListSceneObjects(f'{args.object}[\w]*')

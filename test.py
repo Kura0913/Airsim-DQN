@@ -2,6 +2,7 @@ from DQN.DQNAgent import DQNAgent
 from DQN.Env import AirsimDroneEnv
 from ShortestPath import TravelerShortestPath as tsp
 import Tools.AirsimTools as airsimtools
+import Tools.DQNTools as dqntools
 import numpy as np
 import airsim
 import os
@@ -26,28 +27,6 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
     for sensor_name in DISTANCE_SENSOR:
         sensor_data.append(client.getDistanceSensorData(sensor_name, drone_name).distance)
     return sensor_data
-
-def calculate_reward(done, overlap, prev_dis, curr_dis, targets):
-    reward = 0
-    if curr_dis < 0.5:
-            reward += 5
-            del targets[0]
-    if done:
-        if overlap: # mission fail
-            return reward - 10, {'prev_dis' : -1, 'targets': targets}
-        else: # mission success
-            return reward + 10, {'prev_dis' : -1, 'targets': targets}
-    else:
-        if reward > 0: # arrive current target, reset the distance value to -1
-            if prev_dis < 0 or curr_dis < prev_dis:
-                return reward + 1, {'prev_dis' : -1, 'targets': targets}
-            else:
-                return reward - 2, {'prev_dis' : -1, 'targets': targets}
-        else:
-            if prev_dis < 0 or curr_dis < prev_dis: # drone is closer the target than before
-                return reward + 1, {'prev_dis' : curr_dis, 'targets': targets}
-            else: # drone is further the target than before
-                return reward - 2, {'prev_dis' : curr_dis, 'targets': targets}
 
 def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
 
@@ -107,7 +86,7 @@ if __name__ == "__main__":
         client = airsim.MultirotorClient()
         client.confirmConnection()        
         state_dim = len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN 
-        env = AirsimDroneEnv(calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
+        env = AirsimDroneEnv(dqntools.calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
         agent = DQNAgent(state_dim=state_dim, action_dim=3)
         episodes = args.episodes
 
