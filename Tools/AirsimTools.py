@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import airsim
+from ShortestPath import TravelerShortestPath as tsp
 
 # check the value wheather equals to "negative zero",if yes, set them to 0.0
 def check_negative_zero(x, y, z):
@@ -73,3 +74,18 @@ def map_value(value_range: tuple, target_range: tuple, value: float):
     else:
         return mapped_value
 
+def get_targets(client, targets, round_decimals, bottom_limit):
+
+    target_pos_ary = []
+
+    for target in targets:
+        target_pos = client.simGetObjectPose(target).position
+        target_pos = [np.round(target_pos.x_val, round_decimals), np.round(target_pos.y_val, round_decimals), np.round(target_pos.z_val, round_decimals)]
+        target_pos = check_negative_zero(target_pos[0], target_pos[1], target_pos[2] - bottom_limit)
+        target_pos_ary.append(target_pos)
+    
+    drone_pos = client.simGetVehiclePose().position
+    drone_pos = check_negative_zero(np.round(drone_pos.x_val, round_decimals), np.round(drone_pos.y_val, round_decimals), np.round(drone_pos.z_val, round_decimals))
+    target_pos_ary = tsp.getTSP(target_pos_ary, drone_pos)
+    del target_pos_ary[0]
+    return target_pos_ary

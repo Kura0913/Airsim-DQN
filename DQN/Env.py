@@ -60,7 +60,7 @@ class AirsimDroneEnv(gym.Env):
         n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
         if step_cnt <= 0: # before action, take off the drone
             self.client.takeoffAsync(5, drone_name).join()
-        self.client.moveByVelocityAsync(float(n), float(e), float(d), 0.3, yaw_mode=airsimtools.get_yaw_mode_F([float(n), float(e), float(d)])).join() # drone move
+        self.client.moveByVelocityAsync(float(n), float(e), float(d), 0.15, yaw_mode=airsimtools.get_yaw_mode_F([float(n), float(e), float(d)])).join() # drone move
 
         sensor_data = get_distance_sensor_data(self.client, drone_name = drone_name, sensor_list=self.sensor_list)
         drone_position = self.client.simGetVehiclePose(drone_name).position
@@ -84,13 +84,13 @@ class AirsimDroneEnv(gym.Env):
         return self.state, reward, done, False, {'velocity': action, 'overlap': overlap, 'targets' : targets}
 
     def check_done(self, sensor_values, targets, drone_position, step_cnt):
+        if len(targets) == 0:
+            return True, False
         # Check if all values ​​except down_distance are less than 0.1
         overlap = any(sensor < 0.05 and sensor != -1 for i, sensor in enumerate(sensor_values) if i not in {DOWN_SENSOR_IDX, 11, 12, 13, 14, 15, 16})
         distance = airsimtools.calculate_distance(drone_position, targets[0])
         if overlap or distance > 100 or step_cnt > 1000:
-            return True, True
-        elif len(targets) == 0:
-            return True, False
+            return True, True            
         else:
             return False, False
 

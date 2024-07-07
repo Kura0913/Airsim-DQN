@@ -16,6 +16,7 @@ import time
 DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
 ROUND_DECIMALS = 2
+DRONE_BOTTOM_LIMIT = 2
 DRONE_POSITION_LEN = 3
 TARGET_POSITION_LEN = 3
 BASE_PTAH = '.\\execute\\runs\\'
@@ -27,22 +28,6 @@ def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
     for sensor_name in DISTANCE_SENSOR:
         sensor_data.append(client.getDistanceSensorData(sensor_name, drone_name).distance)
     return sensor_data
-
-def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
-
-    target_pos_ary = []
-
-    for target in targets:
-        target_pos = client.simGetObjectPose(target).position
-        target_pos = [np.round(target_pos.x_val, round_decimals), np.round(target_pos.y_val, round_decimals), np.round(target_pos.z_val, round_decimals)]
-        target_pos = airsimtools.check_negative_zero(target_pos[0], target_pos[1], target_pos[2])
-        target_pos_ary.append(target_pos)
-    
-    drone_pos = client.simGetVehiclePose(drone_name).position
-    drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, round_decimals), np.round(drone_pos.y_val, round_decimals), np.round(drone_pos.z_val, round_decimals))
-    target_pos_ary = tsp.getTSP(target_pos_ary, drone_pos)
-    del target_pos_ary[0]
-    return target_pos_ary
 
 def check_file_exists(file_path):
     if os.path.exists(file_path):
@@ -91,7 +76,7 @@ if __name__ == "__main__":
         episodes = args.episodes
 
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
-        targets = get_targets(client, objects, ROUND_DECIMALS)
+        targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_BOTTOM_LIMIT)
         print(f'best path: {targets}')
         # start the thread
         stop_thread = threading.Thread(target=listen_for_stop)
@@ -109,7 +94,8 @@ if __name__ == "__main__":
                     break
                 client.reset()
                 client.enableApiControl(True)
-                targets = get_targets(client, objects, ROUND_DECIMALS)
+                time.sleep(0.5)
+                targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_BOTTOM_LIMIT)
                 state, _ = env.reset(targets[0])
                 done = False
                 rewards = 0

@@ -2,7 +2,6 @@ from DQN.DQNAgent import DQNAgent
 from DQN.Env import AirsimDroneEnv
 import Tools.DQNTools as dqntools
 import Tools.AirsimTools as airsimtools
-from ShortestPath import TravelerShortestPath as tsp
 import matplotlib.pyplot as plt
 import airsim
 import time
@@ -36,7 +35,7 @@ DRONE_LIMIT = {
 
 DRONE_MAX_SPEED = 3
 
-DISTANCE_RANGE = (0, 20)
+DISTANCE_RANGE = (0, 2)
 MAPING_RANGE = (0, 1)
 
 OBJECT_NAME = "BP_Grid"
@@ -158,24 +157,6 @@ def listen_for_stop():
             break
         time.sleep(0.1)
 
-# get search target's position
-def get_targets(client, targets, round_decimals):
-
-    target_pos_ary = []
-
-    for target in targets:
-        target_pos = client.simGetObjectPose(target).position
-        target_pos = [np.round(target_pos.x_val, round_decimals), np.round(target_pos.y_val, round_decimals), np.round(target_pos.z_val, round_decimals)]
-        target_pos = airsimtools.check_negative_zero(target_pos[0], target_pos[1], target_pos[2])
-        target_pos_ary.append(target_pos)
-    
-    drone_pos = client.simGetVehiclePose().position
-    drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, round_decimals), np.round(drone_pos.y_val, round_decimals), np.round(drone_pos.z_val, round_decimals))
-    target_pos_ary = tsp.getTSP(target_pos_ary, drone_pos)
-    del target_pos_ary[0]
-    return target_pos_ary
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AirSim-DQN train.")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
@@ -211,7 +192,7 @@ if __name__ == "__main__":
         agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
         episodes = args.episodes
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
-        targets = get_targets(client, objects, ROUND_DECIMALS)
+        targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_LIMIT['bottom'])
         print('best path:', targets)
         # start the thread
         stop_thread = threading.Thread(target=listen_for_stop)
@@ -226,7 +207,8 @@ if __name__ == "__main__":
                     break
                 client.reset()
                 client.enableApiControl(True)
-                targets = get_targets(client, objects, ROUND_DECIMALS)
+                time.sleep(0.5)
+                targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_LIMIT['bottom'])
                 state, _ = env.reset(targets[0])
                 done = False
                 rewards = 0
@@ -234,7 +216,7 @@ if __name__ == "__main__":
                 total_loss = 0
                 agent.train_cnt = 0
                 while not done:
-                    action = drone_moving_state(client, targets[0])
+                    action = airsimtools.scale_and_normalize_vector(drone_moving_state(client, targets[0]), 1)
                     next_state, reward, done, _, info = env.step(action, targets, step_cnt=step_count, drone_name=drone_name)
                     agent.store_experience(state, action, reward, next_state, done)
                     state = next_state
@@ -252,7 +234,6 @@ if __name__ == "__main__":
                         loss_avg = np.round(total_loss.cpu().detach().numpy() / agent.train_cnt, 4)
                     if args.infinite_loop:
                         if done:
-                            targets = get_targets(client, objects, ROUND_DECIMALS)
                             if info['overlap']:
                                 status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: fail')
                             else:

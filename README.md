@@ -112,12 +112,12 @@ You can adjust the location or name of the distance sensor installed according t
               "Height": 540,
               "FOV_Degrees": 90
             }],
-            "X": 0.0,
-            "Y": 0.0,
-            "Z": -0.5,
-            "Pitch": 0.0,
-            "Roll": 0.0,
-            "Yaw": 0.0
+          "X": 0.0,
+          "Y": 0.0,
+          "Z": -0.5,
+          "Pitch": 0.0,
+          "Roll": 0.0,
+          "Yaw": 0.0
         }
       },
       "Sensors":{
@@ -132,7 +132,7 @@ You can adjust the location or name of the distance sensor installed according t
         "rfront": {
           "SensorType": 5,
           "Enabled" : true,
-          "X": 0.7, "Y": 0.7, "Z": 0,
+          "X": 0.4, "Y": 0.4, "Z": 0,
           "Yaw": 45, "Pitch": 0, "Roll": 0,
           "MaxDistance":20,
           "MinDistance": 0
@@ -140,7 +140,7 @@ You can adjust the location or name of the distance sensor installed according t
         "lfront": {
           "SensorType": 5,
           "Enabled" : true,
-          "X": 0.7, "Y": -0.7, "Z": 0,
+          "X": 0.4, "Y": -0.4, "Z": 0,
           "Yaw": -45, "Pitch": 0, "Roll": 0,
           "MaxDistance":20,
           "MinDistance": 0
@@ -180,7 +180,7 @@ You can adjust the location or name of the distance sensor installed according t
         "rfbottom": {
           "SensorType": 5,
           "Enabled" : true,
-          "X": 0.7, "Y": 0.7, "Z": 0,
+          "X": 0.5, "Y": 0.5, "Z": 0,
           "Yaw": 0, "Pitch": -90, "Roll": 0,
           "MaxDistance":20,
           "MinDistance": 0
@@ -188,7 +188,7 @@ You can adjust the location or name of the distance sensor installed according t
         "lfbottom": {
           "SensorType": 5,
           "Enabled" : true,
-          "X": 0.7, "Y": -0.7, "Z": 0,
+          "X": 0.5, "Y": -0.5, "Z": 0,
           "Yaw": 0, "Pitch": -90, "Roll": 0,
           "MaxDistance":20,
           "MinDistance": 0
@@ -196,7 +196,7 @@ You can adjust the location or name of the distance sensor installed according t
         "rbbottom": {
           "SensorType": 5,
           "Enabled" : true,
-          "X": -0.7, "Y": 0.7, "Z": 0,
+          "X": -0.5, "Y": 0.5, "Z": 0,
           "Yaw": 0, "Pitch": -90, "Roll": 0,
           "MaxDistance":20,
           "MinDistance": 0
@@ -204,14 +204,14 @@ You can adjust the location or name of the distance sensor installed according t
         "lbbottom": {
           "SensorType": 5,
           "Enabled" : true,
-          "X": -0.7, "Y": -0.7, "Z": 0,
+          "X": -0.5, "Y": -0.5, "Z": 0,
           "Yaw": 0, "Pitch": -90, "Roll": 0,
           "MaxDistance":20,
           "MinDistance": 0
         }
       }
     }
-  },
+  },  
   "PawnPaths": {
     "BareboneCar": {"PawnBP": "Class'/AirSim/VehicleAdv/Vehicle/VehicleAdvPawn.VehicleAdvPawn_C'"},
     "DefaultCar": {"PawnBP": "Class'/AirSim/VehicleAdv/SUV/SuvCarPawn.SuvCarPawn_C'"},
@@ -220,6 +220,7 @@ You can adjust the location or name of the distance sensor installed according t
 
   }
 }
+
 
 ```
 
