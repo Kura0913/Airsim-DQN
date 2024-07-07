@@ -39,7 +39,7 @@ class DQNAgent:
         self.policy_net.eval()
         if np.random.rand() <= self.epsilon:
             # Take a random action
-            return self.policy_net.state_dim * np.random.rand(self.policy_net.action_dim)
+            return list(np.random.uniform(low=-10.0, high=10.0, size=(3,)))
         else:
             # Take a greedy action
             with torch.no_grad():
