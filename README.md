@@ -226,9 +226,11 @@ You can adjust the location or name of the distance sensor installed according t
 ### train
 If there is no object corresponding to the object name in the VR environment, training cannot be started.
 
-After the training is completed, a folder named today's date will be generated in 'Airsim-DQN\execute\runs\', which contains the weight of the training.
+After the training is completed, a folder named today's date will be generated in 'Airsim-DQN\runs\train\', which contains the weight of the training.
 
 If you want to terminate the training, press the **p** key in cmd. After completing the current eposide, the training will be terminated and the weight will be stored.
+
+
 
 ```cmd
 python run.py
@@ -249,7 +251,7 @@ python run.py
 | --infinite_loop | False       | choose whether to enable infinite training mode                                 |
 
 ### test
-
+After training, you can use test.py show your train result.
 ```cmd
 python test.py
 ```
@@ -259,3 +261,19 @@ python test.py
 | --episodes     | 5           | testing times                                                                  |
 | --object       | BP_Grid     | search object name                                                             |
 | --weight       |             | the default value is empty. You need select a weight for testing, otherwise the test cannot be performed.              |
+
+### pretrain.py
+If the vr environment is big or training is not ideal, use pretrain.py to generate good weight for training.
+
+After the training is completed, a folder named today's date will be generated in 'Airsim-DQN\runs\pretrain\', which contains the weight of the training.
+
+But it is recommended not to run too many episodes.
+
+| **parameters**  | **initial** | **directions**                                                                  |
+|:---------------:|:-----------:|:--------------------------------------------------------------------------------|
+| --episodes      | 5           | training cycle                                                                  |
+| --batch_size    | 64          | number of training samples                                                      |
+| --gamma         | 0.99        | weight of future reward                                                         |
+| --object        | BP_Grid     | eearch object name                                                              |
+| --device        | cpu         | cuda or cpu                                                                     |
+| --infinite_loop | False       | choose whether to enable infinite training mode                                 |

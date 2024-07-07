@@ -85,7 +85,7 @@ class AirsimDroneEnv(gym.Env):
         # Check if all values ​​except down_distance are less than 0.1
         overlap = any(sensor < 0.05 and sensor != -1 for i, sensor in enumerate(sensor_values) if i not in {DOWN_SENSOR_IDX, 11, 12, 13, 14, 15, 16})
         distance = airsimtools.calculate_distance(drone_position, targets[0])
-        if overlap or distance > 100 or step_cnt > 500:
+        if overlap or distance > 100 or step_cnt > 1000:
             return True, True
         elif len(targets) == 0:
             return True, False

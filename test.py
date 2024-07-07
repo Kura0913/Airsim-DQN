@@ -85,7 +85,7 @@ def listen_for_stop():
         time.sleep(0.1)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Calculate distance between two coordinates.")
+    parser = argparse.ArgumentParser(description="AirSim-DQN test.")
     parser.add_argument('--episodes', type=int, default=5, help='number of training')
     parser.add_argument('--weight', type=str, default='', help='weight path')
     parser.add_argument('--object', type=str, default='BP_Grid', help='The object name in the vr environment, you can place objects in the VR environment and make sure that the objects you want to visit start with the same name.. Initial object is: BP_Grid')

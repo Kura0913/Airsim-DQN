@@ -1,28 +1,45 @@
 from DQN.DQNAgent import DQNAgent
 from DQN.Env import AirsimDroneEnv
-from ShortestPath import TravelerShortestPath as tsp
-import Tools.AirsimTools as airsimtools
 import Tools.DQNTools as dqntools
+import Tools.AirsimTools as airsimtools
+from ShortestPath import TravelerShortestPath as tsp
 import matplotlib.pyplot as plt
-import numpy as np
 import airsim
-import os
-import json
-import sys
+import time
+import numpy as np
 import argparse
 import torch
+import os
+import json
+import time
 import threading
 import keyboard
-import time
+import sys
 
 ROUND_DECIMALS = 2
 DRONE_POSITION_LEN = 3
 TARGET_POSITION_LEN = 3
 DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
-BASE_PTAH = '.\\runs\\train\\'
-
+BASE_PTAH = '.\\runs\\pretrain\\'
 exit_flag = False
+# sensor name
+
+
+DRONE_LIMIT = {
+    'front':2.0,
+    'right': 2.0,
+    'left': 2.0,
+    'bottom': 1.0,
+    'top': 2.0
+}
+
+DRONE_MAX_SPEED = 3
+
+DISTANCE_RANGE = (0, 20)
+MAPING_RANGE = (0, 1)
+
+OBJECT_NAME = "BP_Grid"
 
 def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
     sensor_data = []
@@ -49,31 +66,6 @@ def calculate_reward(done, overlap, prev_dis, curr_dis, targets):
             else: # drone is further the target than before
                 return -1, {'prev_dis' : curr_dis, 'targets': targets}
 
-def get_targets(client:airsim.MultirotorClient, targets, round_decimals):
-
-    target_pos_ary = []
-
-    for target in targets:
-        target_pos = client.simGetObjectPose(target).position
-        target_pos = [np.round(target_pos.x_val, round_decimals), np.round(target_pos.y_val, round_decimals), np.round(target_pos.z_val, round_decimals)]
-        target_pos = airsimtools.check_negative_zero(target_pos[0], target_pos[1], target_pos[2])
-        target_pos_ary.append(target_pos)
-    
-    drone_pos = client.simGetVehiclePose(drone_name).position
-    drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, round_decimals), np.round(drone_pos.y_val, round_decimals), np.round(drone_pos.z_val, round_decimals))
-    target_pos_ary = tsp.getTSP(target_pos_ary, drone_pos)
-    del target_pos_ary[0]
-    return target_pos_ary
-
-# waiting for pressing 'p' key to stop
-def listen_for_stop():  
-    global exit_flag  
-    while not exit_flag:
-        if keyboard.is_pressed('p'):
-            stop_event.set()
-            break
-        time.sleep(0.1)
-
 def plot_rewards_and_losses(episodes, rewards, average_losses, save_path):
     fig, ax1 = plt.subplots(figsize=(12, 6))
 
@@ -98,22 +90,124 @@ def plot_rewards_and_losses(episodes, rewards, average_losses, save_path):
     plt.savefig(save_path)
     plt.show()
 
+def drone_moving_state(client: airsim.MultirotorClient, target_position):
+    # get dinstance sensor data
+    front = client.getDistanceSensorData(DISTANCE_SENSOR[0]).distance
+    rfront = client.getDistanceSensorData(DISTANCE_SENSOR[3]).distance
+    lfront = client.getDistanceSensorData(DISTANCE_SENSOR[4]).distance
+    right = client.getDistanceSensorData(DISTANCE_SENSOR[2]).distance
+    left = client.getDistanceSensorData(DISTANCE_SENSOR[1]).distance
+    top = client.getDistanceSensorData(DISTANCE_SENSOR[5]).distance
+    bottom = client.getDistanceSensorData(DISTANCE_SENSOR[6]).distance
+    rfbottom = client.getDistanceSensorData(DISTANCE_SENSOR[8]).distance
+    lfbottom = client.getDistanceSensorData(DISTANCE_SENSOR[7]).distance
+    rbbottom = client.getDistanceSensorData(DISTANCE_SENSOR[10]).distance
+    lbbottom = client.getDistanceSensorData(DISTANCE_SENSOR[9]).distance
+
+    drone_position = client.simGetVehiclePose().position
+
+    velocity = airsimtools.get_velocity(drone_position, target_position, 0)
+    RISE_VELOCITY = 1.0
+    velocity_factor = 1.0
+
+    if bottom < DRONE_LIMIT['bottom'] and top > DRONE_LIMIT['top']:
+        correct_velocity = [0, 0, -1 + airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, bottom)]
+        stop_action = True
+    elif rfbottom < DRONE_LIMIT['bottom'] and top > DRONE_LIMIT['top']:
+        correct_velocity = [0, 0, -1 + airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, rfbottom)]
+        stop_action = True
+    elif lfbottom < DRONE_LIMIT['bottom'] and top > DRONE_LIMIT['top']:
+        correct_velocity = [0, 0, -1 + airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, lfbottom)]
+        stop_action = True
+    elif rbbottom < DRONE_LIMIT['bottom'] and top > DRONE_LIMIT['top']:
+        correct_velocity = [0, 0, -1 + airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, rbbottom)]
+        stop_action = True
+    elif lbbottom < DRONE_LIMIT['bottom'] and top > DRONE_LIMIT['top']:
+        correct_velocity = [0, 0, -1 + airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, lbbottom)]
+        stop_action = True
+    elif top < DRONE_LIMIT['top'] and bottom > DRONE_LIMIT['bottom'] and rfbottom > DRONE_LIMIT['bottom'] and lfbottom > DRONE_LIMIT['bottom'] and rbbottom > DRONE_LIMIT['bottom'] and lbbottom > DRONE_LIMIT['bottom']:
+        correct_velocity = [0, 0, 1 - airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, lbbottom)]
+        stop_action = True
+    else:
+        if front < DRONE_LIMIT['front'] and left < DRONE_LIMIT['left'] and right < DRONE_LIMIT['right']:# sensor: front, left, right on
+            correct_velocity = [0, 0, -1]
+            stop_action = True
+        elif front < DRONE_LIMIT['front'] and left < DRONE_LIMIT['left']:# sensor: front, left on
+            correct_velocity = [0, 1, 0]
+            stop_action = True
+        elif front < DRONE_LIMIT['front'] and right < DRONE_LIMIT['right']:# sensor: front, right on
+            correct_velocity = [0, -1, 0]
+            stop_action = True
+        elif left < DRONE_LIMIT['left']:# sensor: left on
+            correct_velocity = [0, 1, 0]
+            velocity_factor = airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, left)
+            stop_action = False
+        elif right < DRONE_LIMIT['right']:# sensor: right on
+            correct_velocity = [0, -1, 0]
+            velocity_factor = airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, right)
+            stop_action = False
+        elif front < DRONE_LIMIT['front']:# senso: front on
+            if rfront > lfront:# there is more space at right side
+                correct_velocity = [0, 1, 0]
+                velocity_factor = airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, right)
+                stop_action = False
+            else:# there is more space at left side
+                correct_velocity = [0, -1, 0]
+                velocity_factor = airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, left)
+                stop_action = False
+        else:# normal
+            correct_velocity = [0, 0, 0]
+            stop_action = False
+
+
+    if stop_action: # drone is very close to obstacles, need to stop moving
+        return correct_velocity
+    else:# there is enough space to correct the velocity
+        velocity = [i * velocity_factor for i in velocity]
+        correct_velocity[2] -= (RISE_VELOCITY - velocity_factor)
+        return np.sum([velocity, correct_velocity], axis=0).tolist()
+
+# waiting for pressing 'p' key to stop
+def listen_for_stop():  
+    global exit_flag  
+    while not exit_flag:
+        if keyboard.is_pressed('p'):
+            stop_event.set()
+            break
+        time.sleep(0.1)
+
+# get search target's position
+def get_targets(client, targets, round_decimals):
+
+    target_pos_ary = []
+
+    for target in targets:
+        target_pos = client.simGetObjectPose(target).position
+        target_pos = [np.round(target_pos.x_val, round_decimals), np.round(target_pos.y_val, round_decimals), np.round(target_pos.z_val, round_decimals)]
+        target_pos = airsimtools.check_negative_zero(target_pos[0], target_pos[1], target_pos[2])
+        target_pos_ary.append(target_pos)
+    
+    drone_pos = client.simGetVehiclePose().position
+    drone_pos = airsimtools.check_negative_zero(np.round(drone_pos.x_val, round_decimals), np.round(drone_pos.y_val, round_decimals), np.round(drone_pos.z_val, round_decimals))
+    target_pos_ary = tsp.getTSP(target_pos_ary, drone_pos)
+    del target_pos_ary[0]
+    return target_pos_ary
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AirSim-DQN train.")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--episodes', type=int, default=5, help='number of training')
-    parser.add_argument('--decay_episode', type=int, default=500, help='set the episode where epsilon starts to decay')
     parser.add_argument('--gamma', type=float, default=0.99, help='weight of future reward')
-    parser.add_argument('--epsilon', type=float, default=1, help='random action rate')
-    parser.add_argument('--epsilon_min', type=float, default=0.2, help='epsilon\'s minimum')
-    parser.add_argument('--decay', type=float, default=0.999, help='epsilon\'s decay rate')
     parser.add_argument('--infinite_loop', type=bool, default=False, help='keep training until press the stop button')
-    parser.add_argument('--weight', type=str, default='', help='weight path')
     parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda'], help='Device to use for training (cpu or cuda)')
     parser.add_argument('--object', type=str, default='BP_Grid', help='The object name in the vr environment, you can place objects in the VR environment and make sure that the objects you want to visit start with the same name.. Initial object is: BP_Grid')
     args = parser.parse_args()
+    
     # to stop training and save the weight
     stop_event = threading.Event()
+    client = airsim.MultirotorClient()
+    client.confirmConnection()
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
     user_home = os.path.expanduser('~')
@@ -132,9 +226,8 @@ if __name__ == "__main__":
         # len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN
         state_dim = len(get_distance_sensor_data(client, drone_name)) + DRONE_POSITION_LEN + TARGET_POSITION_LEN 
         env = AirsimDroneEnv(calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
-        agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, epsilon=args.epsilon, decay_episode=args.decay_episode, gamma=args.gamma, device=device)
+        agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
         episodes = args.episodes
-
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
         targets = get_targets(client, objects, ROUND_DECIMALS)
         print('best path:', targets)
@@ -143,12 +236,6 @@ if __name__ == "__main__":
         stop_thread.start()
 
         if len(targets) > 0:
-            if args.weight != '':
-                try:
-                    agent.load(args.weight)
-                except:
-                    print(f"The path:{args.weight} is not exist, load weight fail.")
-            
             episode = 0
             eposide_reward = []
             eposide_loss_avg = []
@@ -164,7 +251,7 @@ if __name__ == "__main__":
                 total_loss = 0
                 agent.train_cnt = 0
                 while not done:
-                    action = agent.act(state)
+                    action = drone_moving_state(client, targets[0])
                     next_state, reward, done, _, info = env.step(action, targets, step_cnt=step_count, drone_name=drone_name)
                     agent.store_experience(state, action, reward, next_state, done)
                     state = next_state
@@ -182,6 +269,7 @@ if __name__ == "__main__":
                         loss_avg = np.round(total_loss.cpu().detach().numpy() / agent.train_cnt, 4)
                     if args.infinite_loop:
                         if done:
+                            targets = get_targets(client, objects, ROUND_DECIMALS)
                             if info['overlap']:
                                 status = (f'Episode: {episode + 1:5d}/N | Step: {step_count:3d} | Reward: {rewards:5d} | loss: {loss_avg:.4f} | epsilon: {curr_epsilon:.4f} | mission_state: fail')
                             else:
@@ -213,3 +301,4 @@ if __name__ == "__main__":
             stop_thread.join()
         else:
             print("The corresponding object cannot be found in the environment and training cannot be started.")
+    
