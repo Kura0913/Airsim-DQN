@@ -63,19 +63,16 @@ class TravelerShortestPath():
         '''
         coordinates_with_start = [start_coordinate] + coordinates
         n = len(coordinates_with_start)
-
-        # 计算距离矩阵
+        # calculate the distance between each pair of points as a cost matrix
         cost_matrix = np.zeros((n, n))
         for i in range(n):
             for j in range(n):
                 cost_matrix[i][j] = np.linalg.norm(np.array(coordinates_with_start[i]) - np.array(coordinates_with_start[j]))
 
-        # 初始化
         unvisited = set(range(1, n))
-        path = [0]  # 从起始坐标开始
+        path = [0]
         total_length = 0
 
-        # 最近邻启发式
         while unvisited:
             last_visited = path[-1]
             next_city = min(unvisited, key=lambda city: cost_matrix[last_visited][city])
@@ -83,7 +80,7 @@ class TravelerShortestPath():
             path.append(next_city)
             unvisited.remove(next_city)
 
-        # 按照最短路径的索引顺序重新排列
+        # order the coordinates with shortest path
         path_order = [coordinates_with_start[i] for i in path]
 
         return path_order
