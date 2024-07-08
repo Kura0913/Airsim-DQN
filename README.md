@@ -278,3 +278,4 @@ But it is recommended not to run too many episodes.
 | --object        | BP_Grid     | eearch object name                                                              |
 | --device        | cpu         | cuda or cpu                                                                     |
 | --infinite_loop | False       | choose whether to enable infinite training mode                                 |
+| --weight        |             | the default value is empty. You can enter the weight path to continue training  |

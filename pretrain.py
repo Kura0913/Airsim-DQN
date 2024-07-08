@@ -18,6 +18,7 @@ import sys
 ROUND_DECIMALS = 2
 DRONE_POSITION_LEN = 3
 TARGET_POSITION_LEN = 3
+SPAWN_OBJECT_NAME = 'BP_spawn_point'
 DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
 BASE_PTAH = '.\\runs\\pretrain\\'
@@ -163,6 +164,7 @@ if __name__ == "__main__":
     parser.add_argument('--episodes', type=int, default=5, help='number of training')
     parser.add_argument('--gamma', type=float, default=0.99, help='weight of future reward')
     parser.add_argument('--infinite_loop', type=bool, default=False, help='keep training until press the stop button')
+    parser.add_argument('--weight', type=str, default='', help='weight path')
     parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda'], help='Device to use for training (cpu or cuda)')
     parser.add_argument('--object', type=str, default='BP_Grid', help='The object name in the vr environment, you can place objects in the VR environment and make sure that the objects you want to visit start with the same name.. Initial object is: BP_Grid')
     args = parser.parse_args()
@@ -191,23 +193,29 @@ if __name__ == "__main__":
         env = AirsimDroneEnv(dqntools.calculate_reward, state_dim, client, drone_name, DISTANCE_SENSOR)
         agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, gamma=args.gamma, device=device)
         episodes = args.episodes
-        objects = client.simListSceneObjects(f'{args.object}[\w]*')
+        objects = client.simListSceneObjects(f'{args.object}[\w]*')        
         targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_LIMIT['bottom'])
+        spwan_objects = client.simListSceneObjects(f'{SPAWN_OBJECT_NAME}[\w]*')
+        spawn_points = airsimtools.get_targets(client, spwan_objects, ROUND_DECIMALS, DRONE_LIMIT['bottom'])
         print('best path:', targets)
         # start the thread
         stop_thread = threading.Thread(target=listen_for_stop)
         stop_thread.start()
 
         if len(targets) > 0:
+            if args.weight != '':
+                try:
+                    agent.load(args.weight)
+                except:
+                    print(f"The path:{args.weight} is not exist, load weight fail.")
             episode = 0
             eposide_reward = []
             eposide_loss_avg = []
             while episode < episodes:
                 if stop_event.is_set(): # if stop event is set, stop training and save the weight
                     break
-                client.reset()
-                client.enableApiControl(True)
-                time.sleep(0.5)
+                airsimtools.reset_drone_to_random_spawn_point(client, drone_name, spawn_points)
+                time.sleep(1)
                 targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_LIMIT['bottom'])
                 state, _ = env.reset(targets[0])
                 done = False

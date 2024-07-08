@@ -34,9 +34,6 @@ class TravelerShortestPath():
             for j in range(n):
                 cost_matrix[i][j] = sum((a - b)**2 for a, b in zip(coordinates_with_start[i], coordinates_with_start[j]))**0.5
 
-        # find the index of the starting coordinate in coordinates_with_start
-        start_index = coordinates_with_start.index(start_coordinate)
-
         # initial setting
         min_length = float('inf')
         optimal_path_indices = None
@@ -57,5 +54,36 @@ class TravelerShortestPath():
 
         # reorder according to the index of the shortest path
         path_order = [coordinates_with_start[i] for i in optimal_path_indices]
+
+        return path_order
+    
+    def getTSP_NNH(coordinates, start_coordinate):
+        '''
+        Nearest Neighbor Heuristic
+        '''
+        coordinates_with_start = [start_coordinate] + coordinates
+        n = len(coordinates_with_start)
+
+        # 计算距离矩阵
+        cost_matrix = np.zeros((n, n))
+        for i in range(n):
+            for j in range(n):
+                cost_matrix[i][j] = np.linalg.norm(np.array(coordinates_with_start[i]) - np.array(coordinates_with_start[j]))
+
+        # 初始化
+        unvisited = set(range(1, n))
+        path = [0]  # 从起始坐标开始
+        total_length = 0
+
+        # 最近邻启发式
+        while unvisited:
+            last_visited = path[-1]
+            next_city = min(unvisited, key=lambda city: cost_matrix[last_visited][city])
+            total_length += cost_matrix[last_visited][next_city]
+            path.append(next_city)
+            unvisited.remove(next_city)
+
+        # 按照最短路径的索引顺序重新排列
+        path_order = [coordinates_with_start[i] for i in path]
 
         return path_order

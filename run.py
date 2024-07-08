@@ -18,6 +18,7 @@ ROUND_DECIMALS = 2
 DRONE_BOTTOM_LIMIT = 1
 DRONE_POSITION_LEN = 3
 TARGET_POSITION_LEN = 3
+SPAWN_OBJECT_NAME = 'BP_spawn_point'
 
 DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
@@ -101,8 +102,10 @@ if __name__ == "__main__":
         agent = DQNAgent(state_dim=state_dim, action_dim=3, bacth_size=args.batch_size, epsilon=args.epsilon, decay_episode=args.decay_episode, gamma=args.gamma, device=device)
         episodes = args.episodes
 
-        objects = client.simListSceneObjects(f'{args.object}[\w]*')
+        objects = client.simListSceneObjects(f'{args.object}[\w]*')        
         targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_BOTTOM_LIMIT)
+        spwan_objects = client.simListSceneObjects(f'{SPAWN_OBJECT_NAME}[\w]*')
+        spawn_points = airsimtools.get_targets(client, spwan_objects, ROUND_DECIMALS, DRONE_BOTTOM_LIMIT)
         print('best path:', targets)
         # start the thread
         stop_thread = threading.Thread(target=listen_for_stop)
@@ -121,9 +124,8 @@ if __name__ == "__main__":
             while episode < episodes:
                 if stop_event.is_set(): # if stop event is set, stop training and save the weight
                     break
-                client.reset()
-                client.enableApiControl(True)
-                time.sleep(0.5)
+                airsimtools.reset_drone_to_random_spawn_point(client, drone_name, spawn_points)
+                time.sleep(1)
                 targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_BOTTOM_LIMIT)
                 state, _ = env.reset(targets[0])
                 done = False

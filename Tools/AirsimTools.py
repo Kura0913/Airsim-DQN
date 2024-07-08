@@ -74,7 +74,7 @@ def map_value(value_range: tuple, target_range: tuple, value: float):
     else:
         return mapped_value
 
-def get_targets(client, targets, round_decimals, bottom_limit):
+def get_targets(client:airsim.MultirotorClient, targets, round_decimals, bottom_limit):
 
     target_pos_ary = []
 
@@ -86,6 +86,33 @@ def get_targets(client, targets, round_decimals, bottom_limit):
     
     drone_pos = client.simGetVehiclePose().position
     drone_pos = check_negative_zero(np.round(drone_pos.x_val, round_decimals), np.round(drone_pos.y_val, round_decimals), np.round(drone_pos.z_val, round_decimals))
-    target_pos_ary = tsp.getTSP(target_pos_ary, drone_pos)
+    target_pos_ary = tsp.getTSP_NNH(target_pos_ary, drone_pos)
     del target_pos_ary[0]
     return target_pos_ary
+
+def random_position(min_x, max_x, min_y, max_y, min_z, max_z):
+    x = np.random.uniform(min_x, max_x)
+    y = np.random.uniform(min_y, max_y)
+    z = np.random.uniform(min_z, max_z)
+    return airsim.Vector3r(x, y, z)
+
+def reset_drone_to_random_position(client:airsim.MultirotorClient, drone_name, min_x, max_x, min_y, max_y, min_z, max_z):
+    client.reset()
+    client.enableApiControl(True, drone_name)
+    
+    random_pos = random_position(min_x, max_x, min_y, max_y, min_z, max_z)
+    orientation = airsim.to_quaternion(0, 0, 0)
+    
+    pose = airsim.Pose(position=random_pos, orientation=orientation)
+    client.simSetVehiclePose(pose, True, drone_name)
+    return random_pos
+
+def reset_drone_to_random_spawn_point(client:airsim.MultirotorClient, drone_name, spawn_points):
+    client.reset()
+    client.enableApiControl(True, drone_name)
+    orientation = airsim.to_quaternion(0, 0, 0)
+    spawn_point = spawn_points[np.random.randint(len(spawn_points))]
+    spawn_point = airsim.Vector3r(spawn_point[0], spawn_point[1], spawn_point[2])
+    pose = airsim.Pose(spawn_point, orientation)
+    client.simSetVehiclePose(pose, True, drone_name)
+    return spawn_point
