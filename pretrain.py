@@ -12,7 +12,7 @@ import os
 import json
 import time
 import threading
-import keyboard
+import signal
 import sys
 
 ROUND_DECIMALS = 2
@@ -22,10 +22,7 @@ SPAWN_OBJECT_NAME = 'BP_spawn_point'
 DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
 
 BASE_PTAH = '.\\runs\\pretrain\\'
-exit_flag = False
 # sensor name
-
-
 DRONE_LIMIT = {
     'front':2.0,
     'right': 2.0,
@@ -71,6 +68,16 @@ def plot_rewards_and_losses(episodes, rewards, average_losses, save_path):
     # Save and show the plot
     plt.savefig(save_path)
     plt.show()
+
+def signal_handler(signum, frame):
+    global stop_event
+    global folder_path
+    print("\nTraining interrupted. Saving model...")
+    agent.save(f"{folder_path}\\model.pth")
+    plot_rewards_and_losses(range(1, episode + 1), eposide_reward, eposide_loss_avg, save_path=f'{folder_path}\\final_performance_plot.png')
+    print("Model saved. Exiting...")
+    stop_event.set()
+    sys.exit(0)
 
 def drone_moving_state(client: airsim.MultirotorClient, target_position):
     # get dinstance sensor data
@@ -149,15 +156,6 @@ def drone_moving_state(client: airsim.MultirotorClient, target_position):
         correct_velocity[2] -= (RISE_VELOCITY - velocity_factor)
         return np.sum([velocity, correct_velocity], axis=0).tolist()
 
-# waiting for pressing 'p' key to stop
-def listen_for_stop():  
-    global exit_flag  
-    while not exit_flag:
-        if keyboard.is_pressed('p'):
-            stop_event.set()
-            break
-        time.sleep(0.1)
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AirSim-DQN train.")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
@@ -185,6 +183,8 @@ if __name__ == "__main__":
         vehicle_names.append(vehicle)
 
     if len(vehicle_names) > 0:
+        # get weight save folder path
+        folder_path = dqntools.create_directory(BASE_PTAH)
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
         client.confirmConnection()
@@ -198,16 +198,14 @@ if __name__ == "__main__":
         spwan_objects = client.simListSceneObjects(f'{SPAWN_OBJECT_NAME}[\w]*')
         spawn_points = airsimtools.get_targets(client, spwan_objects, ROUND_DECIMALS, DRONE_LIMIT['bottom'])
         print('best path:', targets)
-        # start the thread
-        stop_thread = threading.Thread(target=listen_for_stop)
-        stop_thread.start()
 
-        if len(targets) > 0:
+        if len(targets) > 0:            
             if args.weight != '':
                 try:
                     agent.load(args.weight)
                 except:
                     print(f"The path:{args.weight} is not exist, load weight fail.")
+            signal.signal(signal.SIGINT, signal_handler)
             episode = 0
             eposide_reward = []
             eposide_loss_avg = []
@@ -263,13 +261,10 @@ if __name__ == "__main__":
                 eposide_reward.append(rewards)
                 eposide_loss_avg.append(loss_avg)
                 if not args.infinite_loop:
-                    episode += 1
-            folder_path = dqntools.create_directory(BASE_PTAH)
+                    episode += 1            
             agent.save(f"{folder_path}\\model.pth") # save weight
             plot_rewards_and_losses(range(1, episode + 1), eposide_reward, eposide_loss_avg, save_path=f'{folder_path}\\final_performance_plot.png')
             print("Updated model saved!")
-            exit_flag = True
-            stop_thread.join()
         else:
             print("The corresponding object cannot be found in the environment and training cannot be started.")
     

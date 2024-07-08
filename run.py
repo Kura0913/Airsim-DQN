@@ -11,8 +11,8 @@ import sys
 import argparse
 import torch
 import threading
-import keyboard
 import time
+import signal
 
 ROUND_DECIMALS = 2
 DRONE_BOTTOM_LIMIT = 1
@@ -24,22 +24,21 @@ DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom"
 
 BASE_PTAH = '.\\runs\\train\\'
 
-exit_flag = False
-
 def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
     sensor_data = []
     for sensor_name in DISTANCE_SENSOR:
         sensor_data.append(client.getDistanceSensorData(sensor_name, drone_name).distance)
     return sensor_data
 
-# waiting for pressing 'p' key to stop
-def listen_for_stop():  
-    global exit_flag  
-    while not exit_flag:
-        if keyboard.is_pressed('p'):
-            stop_event.set()
-            break
-        time.sleep(0.1)
+def signal_handler(signum, frame):
+    global stop_event
+    global folder_path
+    print("\nTraining interrupted. Saving model...")
+    agent.save(f"{folder_path}\\model.pth")
+    plot_rewards_and_losses(range(1, episode + 1), eposide_reward, eposide_loss_avg, save_path=f'{folder_path}\\final_performance_plot.png')
+    print("Model saved. Exiting...")
+    stop_event.set()
+    sys.exit(0)
 
 def plot_rewards_and_losses(episodes, rewards, average_losses, save_path):
     fig, ax1 = plt.subplots(figsize=(12, 6))
@@ -93,6 +92,8 @@ if __name__ == "__main__":
         vehicle_names.append(vehicle)
 
     if len(vehicle_names) > 0:
+        # get weight save folder path
+        folder_path = dqntools.create_directory(BASE_PTAH)
         drone_name = vehicle_names[0]
         client = airsim.MultirotorClient()
         client.confirmConnection()
@@ -107,9 +108,6 @@ if __name__ == "__main__":
         spwan_objects = client.simListSceneObjects(f'{SPAWN_OBJECT_NAME}[\w]*')
         spawn_points = airsimtools.get_targets(client, spwan_objects, ROUND_DECIMALS, DRONE_BOTTOM_LIMIT)
         print('best path:', targets)
-        # start the thread
-        stop_thread = threading.Thread(target=listen_for_stop)
-        stop_thread.start()
 
         if len(targets) > 0:
             if args.weight != '':
@@ -117,7 +115,8 @@ if __name__ == "__main__":
                     agent.load(args.weight)
                 except:
                     print(f"The path:{args.weight} is not exist, load weight fail.")
-            
+
+            signal.signal(signal.SIGINT, signal_handler)
             episode = 0
             eposide_reward = []
             eposide_loss_avg = []
@@ -173,12 +172,9 @@ if __name__ == "__main__":
                 eposide_reward.append(rewards)
                 eposide_loss_avg.append(loss_avg)
                 if not args.infinite_loop:
-                    episode += 1
-            folder_path = dqntools.create_directory(BASE_PTAH)
+                    episode += 1            
             agent.save(f"{folder_path}\\model.pth") # save weight
             plot_rewards_and_losses(range(1, episode + 1), eposide_reward, eposide_loss_avg, save_path=f'{folder_path}\\final_performance_plot.png')
             print("Updated model saved!")
-            exit_flag = True
-            stop_thread.join()
         else:
             print("The corresponding object cannot be found in the environment and training cannot be started.")

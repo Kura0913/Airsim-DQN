@@ -10,7 +10,7 @@ import json
 import sys
 import argparse
 import threading
-import keyboard
+import signal
 import time
 
 DISTANCE_SENSOR = ["front", "left", "right", "rfront", "lfront", "top", "bottom", 'lfbottom', 'rfbottom', 'lbbottom', 'rbbottom']
@@ -20,8 +20,6 @@ DRONE_BOTTOM_LIMIT = 2
 DRONE_POSITION_LEN = 3
 TARGET_POSITION_LEN = 3
 BASE_PTAH = '.\\execute\\runs\\'
-
-exit_flag = False
 
 def get_distance_sensor_data(client:airsim.MultirotorClient, drone_name):
     sensor_data = []
@@ -39,14 +37,12 @@ def check_file_exists(file_path):
 
         return False
 
-# waiting for pressing 'p' key to stop
-def listen_for_stop():  
-    global exit_flag  
-    while not exit_flag:
-        if keyboard.is_pressed('p'):
-            stop_event.set()
-            break
-        time.sleep(0.1)
+def signal_handler(signum, frame):
+    global stop_event
+    print("\nTraining interrupted...")
+    print("Exiting...")
+    stop_event.set()
+    sys.exit(0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AirSim-DQN test.")
@@ -78,11 +74,8 @@ if __name__ == "__main__":
         objects = client.simListSceneObjects(f'{args.object}[\w]*')
         targets = airsimtools.get_targets(client, objects, ROUND_DECIMALS, DRONE_BOTTOM_LIMIT)
         print(f'best path: {targets}')
-        # start the thread
-        stop_thread = threading.Thread(target=listen_for_stop)
-        stop_thread.start()
-
         if len(targets) > 0:
+            signal.signal(signal.SIGINT, signal_handler)
             if args.weight != '':
                 try:
                     agent.load(args.weight)
@@ -121,7 +114,5 @@ if __name__ == "__main__":
                 print(f'\r')
 
             print("test finished!")
-            exit_flag = True
-            stop_thread.join()
         else:
             print("The corresponding object cannot be found in the environment and testing cannot be started.")
