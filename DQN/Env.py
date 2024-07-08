@@ -3,11 +3,13 @@ from gymnasium import spaces
 import numpy as np
 import Tools.AirsimTools as airsimtools
 import airsim
-import math
+
 
 DOWN_SENSOR_IDX = 6
 INITIAL_DISTANCE = -1
 ROUND_DECIMALS = 2
+DISTANCE_RANGE = (0, 5)
+MAPING_RANGE = (1, 3)
 DISTANCE_SENSOR = {
     "f" : "front",
     "l" : "left",
@@ -57,7 +59,8 @@ class AirsimDroneEnv(gym.Env):
         targets:[[n, e, d]]
         '''
         n, e, d = action
-        n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], 1)
+        speed = airsimtools.map_value(DISTANCE_RANGE, MAPING_RANGE, self.prev_dis)
+        n, e, d = airsimtools.scale_and_normalize_vector([n, e, d], speed)
         if step_cnt <= 0: # before action, take off the drone
             self.client.takeoffAsync(5, drone_name).join()
         self.client.moveByVelocityAsync(float(n), float(e), float(d), 0.15, yaw_mode=airsimtools.get_yaw_mode_F([float(n), float(e), float(d)])).join() # drone move
