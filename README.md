@@ -59,6 +59,7 @@ You can adjust the location or name of the distance sensor installed according t
 
 ```json
 {
+  "$schema": "./schema.json",
   "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/main/docs/settings.md",
   "SettingsVersion": 1.2,
   "SimMode": "Multirotor",
@@ -121,93 +122,20 @@ You can adjust the location or name of the distance sensor installed according t
         }
       },
       "Sensors":{
-        "front": {
-        "SensorType": 5,
-        "Enabled" : true,
-        "X": 0.5, "Y": 0, "Z": 0,
-        "Yaw": 0, "Pitch": 0, "Roll": 0,
-        "MaxDistance":20,
-        "MinDistance": 0
-        },
-        "rfront": {
-          "SensorType": 5,
+        "front_lidar": {
+          "SensorType": 6,
           "Enabled" : true,
-          "X": 0.4, "Y": 0.4, "Z": 0,
-          "Yaw": 45, "Pitch": 0, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "lfront": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": 0.4, "Y": -0.4, "Z": 0,
-          "Yaw": -45, "Pitch": 0, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "left": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": 0, "Y": -0.5, "Z": 0,
-          "Yaw": -90, "Pitch": 0, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "right": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": 0, "Y": 0.5, "Z": 0,
-          "Yaw": 90, "Pitch": 0, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "top": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": 0, "Y": 0, "Z": 0,
-          "Yaw": 0, "Pitch": 90, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "bottom": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": 0, "Y": 0, "Z": 0,
-          "Yaw": 0, "Pitch": -90, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "rfbottom": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": 0.5, "Y": 0.5, "Z": 0,
-          "Yaw": 0, "Pitch": -90, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "lfbottom": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": 0.5, "Y": -0.5, "Z": 0,
-          "Yaw": 0, "Pitch": -90, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "rbbottom": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": -0.5, "Y": 0.5, "Z": 0,
-          "Yaw": 0, "Pitch": -90, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
-        },
-        "lbbottom": {
-          "SensorType": 5,
-          "Enabled" : true,
-          "X": -0.5, "Y": -0.5, "Z": 0,
-          "Yaw": 0, "Pitch": -90, "Roll": 0,
-          "MaxDistance":20,
-          "MinDistance": 0
+          "NumberOfChannels": 64,
+          "RotationsPerSecond": 10,
+          "PointsPerSecond": 1500000,
+          "X": 0.5, "Y": 0, "Z": -1,
+          "Roll": 0, "Pitch": 0, "Yaw" : 0,
+          "VerticalFOVUpper": 26.8,
+          "VerticalFOVLower": -26.8,
+          "HorizontalFOVStart": -45,
+          "HorizontalFOVEnd": 45,
+          "DrawDebugPoints": true,
+          "DataFrame": "SensorLocalFrame"
         }
       }
     }
